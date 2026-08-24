@@ -109,7 +109,7 @@ Statuses: queued, preparing, downloading, paused, completed, failed, cancelled, 
 | Preferred quality/format | IMPLEMENTED |
 | Performance panel | IMPLEMENTED |
 | Clear caches | IMPLEMENTED |
-| About 1.0.0 | IMPLEMENTED |
+| About current version; What's new after update | IMPLEMENTED |
 | Notification settings toggle | NOT_IN_V1 |
 
 ---

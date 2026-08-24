@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_types/shared_types.dart';
 
+import '../../changelog/app_changelog.dart';
+import '../../changelog/changelog_dialog.dart';
 import '../../providers/library_providers.dart';
 import '../../providers/performance_providers.dart';
 import '../../providers/settings_provider.dart';
@@ -204,10 +206,12 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
       const SizedBox(height: UdmSpacing.xxl),
-      const ListTile(
-        leading: Icon(Icons.info_outline),
-        title: Text('About'),
-        subtitle: Text('Universal Downloader v1.0.0'),
+      ListTile(
+        leading: const Icon(Icons.info_outline),
+        title: const Text('About'),
+        subtitle: Text('Universal Downloader v$latestChangelogVersion'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => showChangelogDialog(context),
       ),
     ];
 

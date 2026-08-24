@@ -6,13 +6,13 @@ Path dependencies listed as `(path)`.
 
 ---
 
-## apps/mobile — `universal_downloader` `1.1.0+3`
+## apps/mobile — `universal_downloader` `1.2.0+4`
 
 **Dart:** `lib/main.dart` + tests  
 **Deps:** flutter_riverpod ^2.6.1, app_core (path), flutter_foreground_task ^9.1.0, shared_preferences ^2.5.3, path_provider_platform_interface ^2.1.2, plugin_platform_interface ^2.1.8, cupertino_icons ^1.0.8  
 **Dev:** flutter_lints ^6.0.0, sqflite_common_ffi ^2.3.6
 
-## apps/web — `universal_downloader_web` `1.1.0+3`
+## apps/web — `universal_downloader_web` `1.2.0+4`
 
 **Deps:** flutter_riverpod, app_core (path), sqflite_common_ffi_web ^1.0.4, cupertino_icons
 

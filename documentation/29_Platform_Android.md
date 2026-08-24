@@ -39,7 +39,7 @@ WRITE_EXTERNAL_STORAGE (maxSdkVersion 29 — gallery album writes on Android 10)
 - minify + shrink resources
 - ProGuard rules for Flutter + plugins used
 - signing via `key.properties` (example file only in git)
-- versionName 1.1.0 versionCode 3 (`1.1.0+3`)
+- versionName 1.2.0 versionCode 4 (`1.2.0+4`)
 
 ## minSdk
 

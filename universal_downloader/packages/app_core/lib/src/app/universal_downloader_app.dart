@@ -1,6 +1,7 @@
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../bootstrap/changelog_scope.dart';
 import '../bootstrap/download_background_scope.dart';
 import '../bootstrap/intake_scope.dart';
 import '../providers/app_providers.dart';
@@ -24,7 +25,9 @@ class UniversalDownloaderApp extends ConsumerWidget {
       builder: (context, child) {
         return DownloadBackgroundScope(
           child: IntakeScope(
-            child: child ?? const SizedBox.shrink(),
+            child: ChangelogScope(
+              child: child ?? const SizedBox.shrink(),
+            ),
           ),
         );
       },

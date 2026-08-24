@@ -64,6 +64,7 @@ void main() {
     SharedPreferences.setMockInitialValues({
       'onboarding_complete': true,
       'storage_root_path': '/tmp/udm_test/Downloads/Universal Downloader',
+      'last_seen_changelog_version': '1.1.0',
     });
 
     final container = await testContainer();
@@ -79,5 +80,83 @@ void main() {
 
     expect(find.text('Get started'), findsNothing);
     expect(find.byType(NavigationBar), findsOneWidget);
+  });
+
+  testWidgets('shows changelog after an app update', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'onboarding_complete': true,
+      'storage_root_path': '/tmp/udm_test/Downloads/Universal Downloader',
+      'last_seen_changelog_version': '1.0.0',
+    });
+
+    final container = await testContainer();
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const UniversalDownloaderApp(),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text("What's new in 1.1.0"), findsOneWidget);
+    expect(
+      find.text(
+        'Save photos and videos to the Gallery album Universal Downloader.',
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Got it'));
+    await tester.pumpAndSettle();
+
+    expect(find.text("What's new in 1.1.0"), findsNothing);
+    expect(
+      container.read(settingsProvider).lastSeenChangelogVersion,
+      '1.1.0',
+    );
+  });
+
+  testWidgets(
+    'shows changelog once for onboarded users with no last seen version',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'onboarding_complete': true,
+        'storage_root_path': '/tmp/udm_test/Downloads/Universal Downloader',
+      });
+
+      final container = await testContainer();
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const UniversalDownloaderApp(),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      expect(find.text("What's new in 1.1.0"), findsOneWidget);
+
+      await tester.tap(find.text('Got it'));
+      await tester.pumpAndSettle();
+      expect(find.text("What's new in 1.1.0"), findsNothing);
+    },
+  );
+
+  testWidgets('does not show changelog on first launch', (tester) async {
+    final container = await testContainer();
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const UniversalDownloaderApp(),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text("What's new in 1.1.0"), findsNothing);
+    expect(find.text('Welcome to Universal Downloader'), findsOneWidget);
   });
 }

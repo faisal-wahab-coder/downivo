@@ -2,7 +2,7 @@
 
 **Purpose:** This folder is a complete, as-built specification so another Cursor (or engineer) can recreate an **exact copy** of Universal Downloader.
 
-**Status:** Production (`1.1.0+3`)  
+**Status:** Production (`1.2.0+4`)  
 **Captured:** 19 August 2026  
 **Source of truth:** this folder describes the **running Flutter app**, not the original React Native drafts in `/docs`.
 
@@ -85,7 +85,7 @@ It is **not** React Native. Original `/docs` still mention RN/Zustand/TypeScript
 3. **Riverpod + GoRouter + StatefulShellRoute** (5 tabs).
 4. Recreate only **implemented** packages listed in `melos.yaml`. Empty stub folders (`activity`, `collections`, …) are optional and unused.
 5. Do **not** build Collections, Activity Center, Notification Center, cloud sync, AI, or encryption vault as product features.
-6. Android applicationId / label: `Universal Downloader`. Version `1.1.0+3`.
+6. Android applicationId / label: `Universal Downloader`. Version `1.2.0+4`.
 7. Max **3 concurrent** downloads. HTTP Range pause/resume. Dio HTTP client.
 
 ---

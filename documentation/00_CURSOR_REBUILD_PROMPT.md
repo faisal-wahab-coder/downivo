@@ -149,7 +149,7 @@ Widget tests depend on copy: **“Welcome to Universal Downloader”**, **“Get
 
 ## Settings model (exact — do not invent keys)
 
-`themeMode`, `clipboardMonitoringEnabled`, `storageRootPath` (display-only), `preferredQuality`, `preferredFormat`. Appearance system/light/dark. Performance panel. Clear caches. About v1.0.0. Link to download history.
+`themeMode`, `clipboardMonitoringEnabled`, `storageRootPath` (display-only), `preferredQuality`, `preferredFormat`. Appearance system/light/dark. Performance panel. Clear caches. About (current version; tap opens What's new). Link to download history.
 
 ## Implementation order
 

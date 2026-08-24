@@ -1,6 +1,6 @@
 # Production Release Guide
 
-Universal Downloader **1.1.0** — gallery, in-app viewer, and social URL resolvers.
+Universal Downloader **1.2.0** — What's new dialog, gallery, and social URL resolvers.
 
 ## Prerequisites
 
@@ -25,7 +25,7 @@ Complete the manual checklist in [`QA_CHECKLIST.md`](QA_CHECKLIST.md) on a physi
 
 - **Version name** — `pubspec.yaml` → `version: MAJOR.MINOR.PATCH+BUILD`
 - **Version code** — the number after `+` (must increment for each Play Store upload)
-- Current production: `1.1.0+3`
+- Current production: `1.2.0+4`
 
 ## Signing (Google Play)
 
@@ -69,8 +69,8 @@ Outputs:
 Create a release:
 
 ```bash
-git tag v1.1.0
-git push origin v1.1.0
+git tag v1.2.0
+git push origin v1.2.0
 ```
 
 ## Google Play checklist

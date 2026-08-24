@@ -6,6 +6,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-08-25
+
+### Added
+
+- What's new dialog after an app update, also available from Settings → About.
+
 ## [1.1.0] - 2026-08-25
 
 Sideload / internal release (Android arm64). Gallery, in-app photo viewer, and social URL resolvers.
@@ -41,7 +47,8 @@ First production release (Android, V1 scope).
 
 Release candidate — feature complete, QA checklist provided.
 
-[Unreleased]: https://bitbucket.org/app_ideas/downloader/branches/compare/main%0Dv1.1.0
+[Unreleased]: https://bitbucket.org/app_ideas/downloader/branches/compare/main%0Dv1.2.0
+[1.2.0]: https://bitbucket.org/app_ideas/downloader/src/v1.2.0/
 [1.1.0]: https://bitbucket.org/app_ideas/downloader/src/v1.1.0/
 [1.0.0]: https://bitbucket.org/app_ideas/downloader/src/v1.0.0/
 [1.0.0-rc.1]: https://bitbucket.org/app_ideas/downloader/src/v1.0.0-rc.1/

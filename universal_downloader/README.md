@@ -139,3 +139,9 @@ Release engineering: [`RELEASE.md`](RELEASE.md) · [`CHANGELOG.md`](CHANGELOG.md
 - [x] Save to Gallery + in-app image gallery
 - [x] Social/media URL resolvers (YouTube, TikTok, Instagram, and others)
 - [x] [`CHANGELOG.md`](CHANGELOG.md) for 1.1.0
+
+**1.2.0 — What's new (complete)**
+
+- [x] Version `1.2.0+4`
+- [x] What's new dialog after updates (also Settings → About)
+- [x] [`CHANGELOG.md`](CHANGELOG.md) for 1.2.0

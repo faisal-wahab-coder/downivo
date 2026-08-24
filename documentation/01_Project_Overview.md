@@ -65,7 +65,7 @@ Android users who download videos, audio, documents, and other files from the op
 | Flutter Web | Shipping runner (`apps/web`), reduced native features |
 | iOS / desktop / wear | Not V1 |
 
-Application version: **`1.1.0+3`**.
+Application version: **`1.2.0+4`**.
 
 ---
 

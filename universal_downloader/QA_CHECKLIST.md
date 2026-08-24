@@ -1,6 +1,6 @@
 # M9 Production Release — Manual QA Checklist
 
-Per NFR-496. Complete on a physical Android device (API 29+) before shipping **v1.1.0** to Google Play.
+Per NFR-496. Complete on a physical Android device (API 29+) before shipping **v1.2.0** to Google Play.
 
 Automated suites and the download fixture server live in `qa/`. Run `bash qa/runner/qa_runner.sh` before this device pass.
 

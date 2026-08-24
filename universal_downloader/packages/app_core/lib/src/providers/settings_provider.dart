@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_types/shared_types.dart';
 
 import '../bootstrap/app_initializer.dart';
+import '../changelog/app_changelog.dart';
 import '../navigation/app_router.dart';
 
 const _unset = Object();
@@ -15,6 +16,7 @@ const _clipboardKey = 'clipboard_monitoring';
 const _storagePathKey = 'storage_root_path';
 const _preferredQualityKey = 'preferred_quality';
 const _preferredFormatKey = 'preferred_format';
+const _changelogVersionKey = 'last_seen_changelog_version';
 
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   throw UnimplementedError('SharedPreferences must be overridden at bootstrap');
@@ -36,6 +38,7 @@ class AppSettings {
     required this.storageRootPath,
     this.preferredQuality,
     this.preferredFormat,
+    this.lastSeenChangelogVersion,
   });
 
   final bool onboardingComplete;
@@ -44,6 +47,7 @@ class AppSettings {
   final String? storageRootPath;
   final String? preferredQuality;
   final String? preferredFormat;
+  final String? lastSeenChangelogVersion;
 
   AppSettings copyWith({
     bool? onboardingComplete,
@@ -52,6 +56,7 @@ class AppSettings {
     String? storageRootPath,
     Object? preferredQuality = _unset,
     Object? preferredFormat = _unset,
+    Object? lastSeenChangelogVersion = _unset,
   }) {
     return AppSettings(
       onboardingComplete: onboardingComplete ?? this.onboardingComplete,
@@ -65,6 +70,9 @@ class AppSettings {
       preferredFormat: identical(preferredFormat, _unset)
           ? this.preferredFormat
           : preferredFormat as String?,
+      lastSeenChangelogVersion: identical(lastSeenChangelogVersion, _unset)
+          ? this.lastSeenChangelogVersion
+          : lastSeenChangelogVersion as String?,
     );
   }
 }
@@ -80,13 +88,24 @@ class SettingsNotifier extends Notifier<AppSettings> {
       storageRootPath: prefs.getString(_storagePathKey),
       preferredQuality: prefs.getString(_preferredQualityKey),
       preferredFormat: prefs.getString(_preferredFormatKey),
+      lastSeenChangelogVersion: prefs.getString(_changelogVersionKey),
     );
   }
 
   Future<void> completeOnboarding() async {
     final prefs = ref.read(sharedPreferencesProvider);
     await prefs.setBool(_onboardingKey, true);
-    state = state.copyWith(onboardingComplete: true);
+    await prefs.setString(_changelogVersionKey, latestChangelogVersion);
+    state = state.copyWith(
+      onboardingComplete: true,
+      lastSeenChangelogVersion: latestChangelogVersion,
+    );
+  }
+
+  Future<void> markChangelogSeen(String version) async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    await prefs.setString(_changelogVersionKey, version);
+    state = state.copyWith(lastSeenChangelogVersion: version);
   }
 
   Future<void> setThemeMode(ThemeModePreference mode) async {
