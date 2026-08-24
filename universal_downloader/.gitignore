@@ -1,0 +1,38 @@
+# Dart & Flutter
+.dart_tool/
+.packages
+build/
+**/build/
+*.iml
+.idea/
+.vscode/
+
+# Flutter pub
+pubspec.lock
+!apps/mobile/pubspec.lock
+
+# Android
+**/local.properties
+**/.gradle/
+**/captures/
+**/*.apk
+**/*.aab
+
+# iOS (future)
+**/Pods/
+**/.symlinks/
+
+# Coverage
+coverage/
+*.lcov
+
+# Environment
+.env
+.env.*
+
+# Melos
+.melos_tool/
+
+# QA runner output
+qa/reports/*.txt
+qa/reports/*.json

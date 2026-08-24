@@ -1,0 +1,29 @@
+name: udm_search
+description: Local search over downloads and the media library.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.0
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  shared_preferences: ^2.5.3
+  download_engine:
+    path: ../download_engine
+  media_library:
+    path: ../media_library
+  shared_types:
+    path: ../shared_types
+  storage:
+    path: ../storage
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

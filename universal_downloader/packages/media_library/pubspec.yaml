@@ -1,0 +1,32 @@
+name: media_library
+description: Scans, organizes, and manages downloaded files on device.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.0
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  path: ^1.9.1
+  mime: ^2.0.0
+  open_filex: ^4.7.0
+  share_plus: ^10.1.4
+  gal: ^2.3.3
+  shared_preferences: ^2.5.3
+  storage:
+    path: ../storage
+  shared_utils:
+    path: ../shared_utils
+  performance:
+    path: ../performance
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

@@ -1,0 +1,29 @@
+name: universal_downloader
+description: Universal Downloader - Android download manager
+publish_to: none
+version: 1.1.0+3
+
+environment:
+  sdk: ^3.10.0
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.6.1
+  app_core:
+    path: ../../packages/app_core
+  flutter_foreground_task: ^9.1.0
+  shared_preferences: ^2.5.3
+  path_provider_platform_interface: ^2.1.2
+  plugin_platform_interface: ^2.1.8
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  sqflite_common_ffi: ^2.3.6
+
+flutter:
+  uses-material-design: true

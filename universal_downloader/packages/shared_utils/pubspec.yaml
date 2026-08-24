@@ -1,0 +1,13 @@
+name: shared_utils
+description: Shared formatting and helper utilities.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+
+dev_dependencies:
+  test: ^1.25.0
+  lints: ^6.0.0

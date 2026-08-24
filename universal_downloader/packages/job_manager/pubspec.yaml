@@ -1,0 +1,28 @@
+name: job_manager
+description: Background download coordination and foreground service.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.0
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_foreground_task: ^9.1.0
+  connectivity_plus: ^6.1.4
+  download_engine:
+    path: ../download_engine
+  notifications:
+    path: ../notifications
+  shared_types:
+    path: ../shared_types
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

@@ -1,0 +1,19 @@
+def javaVer = JavaVersion.VERSION_17
+def alreadyEvaluated = state.executed
+
+def alignJvmTargets = {
+    tasks.withType(JavaCompile).configureEach {
+        sourceCompatibility = javaVer.toString()
+        targetCompatibility = javaVer.toString()
+    }
+
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+        compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
+}
+
+if (alreadyEvaluated) {
+    alignJvmTargets()
+} else {
+    afterEvaluate { alignJvmTargets() }
+}

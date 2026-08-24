@@ -1,0 +1,39 @@
+# OS
+.DS_Store
+**/.DS_Store
+
+# MCP config may contain API keys — use .cursor/mcp.json.example as template
+.cursor/mcp.json
+.cursor/tools/
+.cursor/stitch.env
+
+# Stitch downloaded screen HTML/PNG (regenerate via MCP)
+.stitch/designs/
+
+# Flutter / Dart
+**/.dart_tool/
+**/.packages
+**/build/
+**/*.iml
+.idea/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+
+# Android
+**/local.properties
+**/.gradle/
+**/*.apk
+**/*.aab
+**/*.jks
+**/*.keystore
+**/key.properties
+
+# Archives
+*.zip
+
+# Local context-mode index (not source)
+.github/context-mode/
+
+# Environment
+.env
+.env.*

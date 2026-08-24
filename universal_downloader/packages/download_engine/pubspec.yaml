@@ -1,0 +1,36 @@
+name: download_engine
+description: Core download queue, workers, and lifecycle management.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.0
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  dio: ^5.9.0
+  uuid: ^4.5.1
+  path: ^1.9.1
+  database:
+    path: ../database
+  storage:
+    path: ../storage
+  shared_types:
+    path: ../shared_types
+  performance:
+    path: ../performance
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  sqflite_common_ffi: ^2.3.6
+  path_provider_platform_interface: ^2.1.2
+  plugin_platform_interface: ^2.1.8
+  udm_qa_server:
+    path: ../../qa/server
+
+flutter:
+  uses-material-design: true
