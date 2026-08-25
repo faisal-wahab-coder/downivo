@@ -1,0 +1,37 @@
+---
+description: Universal Downloader project conventions
+alwaysApply: true
+---
+
+# Universal Downloader
+
+React Native Android download manager. Clean Architecture, MVVM, offline-first, Material Design 3, TypeScript.
+
+## Source of truth
+
+Before implementing features, consult `docs/` — especially:
+
+- `01_Project_Overview.md`
+- `02_Product_Requirements_Document.md`
+- `07_Engineering_Standards.md`
+- `11_Technical_Architecture/`
+- `12_System_Design/`
+
+Implementation must follow these documents. Never contradict them.
+
+## Scope
+
+- Keep changes minimal and scoped to the feature or module being edited.
+- Do not start new application features unless explicitly requested.
+- Production-ready code only — no placeholder architecture or demo code unless requested.
+- Prefer existing patterns in the codebase over new abstractions.
+
+## Architecture
+
+- Clean Architecture with feature-based modules
+- Repository pattern, dependency injection, event bus
+- Offline-first where practical
+
+## GitHub
+
+- Use GitHub MCP only when repo inspection, issues, or PRs are needed — not for routine local edits.

@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "command": "/Users/user/.nvm/versions/node/v20.20.2/bin/node /Users/user/Desktop/Personals/Universal Download Manager/.cursor/tools/node_modules/context-mode/cli.bundle.mjs hook cursor pretooluse",
+        "matcher": "Shell|Read|Grep|WebFetch|mcp_web_fetch|mcp_fetch_tool|Task|MCP:ctx_execute|MCP:ctx_execute_file|MCP:ctx_batch_execute|MCP:(?!ctx_)"
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": "/Users/user/.nvm/versions/node/v20.20.2/bin/node /Users/user/Desktop/Personals/Universal Download Manager/.cursor/tools/node_modules/context-mode/cli.bundle.mjs hook cursor posttooluse"
+      }
+    ],
+    "stop": [
+      {
+        "command": "/Users/user/.nvm/versions/node/v20.20.2/bin/node /Users/user/Desktop/Personals/Universal Download Manager/.cursor/tools/node_modules/context-mode/cli.bundle.mjs hook cursor stop"
+      }
+    ]
+  }
+}

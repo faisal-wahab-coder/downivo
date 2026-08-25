@@ -1,0 +1,38 @@
+---
+description: Google Stitch design-to-code for Universal Downloader UI. Use when generating screens, DESIGN.md, design systems, or converting Stitch designs to React Native.
+alwaysApply: false
+---
+
+# Google Stitch
+
+This app is a React Native Android download manager (Material Design 3). Use **Google Stitch MCP** plus **stitch-skills** for UI design and screen implementation.
+
+Official Stitch: https://stitch.withgoogle.com
+Skills source: https://github.com/google-labs-code/stitch-skills
+
+## Before designing or implementing UI
+
+1. Confirm the **stitch** MCP server is available. Discover the tool prefix (often `stitch:`) before calling Stitch tools.
+2. Read the matching skill under `.agents/skills/` (Cursor also loads these automatically).
+3. Follow `docs/` (PRD, engineering standards, architecture). Stitch output must not contradict those documents.
+
+## Which skill to use
+
+| Intent | Skill |
+|---|---|
+| Vague UI idea → strong Stitch prompt | `enhance-prompt` |
+| New screens from text or images | `stitch-generate-design` |
+| Design system in Stitch | `stitch-manage-design-system` |
+| Semantic DESIGN.md / anti-generic UI | `taste-design` or `design-md` |
+| Convert Stitch screens → React Native | `stitch-react-native` |
+| Multi-screen iterative build | `stitch-loop` |
+| Upload local HTML/assets to Stitch | `stitch-upload-to-stitch` |
+| Existing UI → Stitch | `stitch-code-to-design` |
+
+Prefer **`stitch-react-native`** over `stitch-react-components`, `shadcn-ui`, and `react-vite-dashboard`. This product is React Native, not web.
+
+## Implementation rules
+
+- Keep generated UI on Material Design 3, TypeScript, and existing feature-module patterns.
+- Store Stitch artifacts under `.stitch/` (`metadata.json`, `designs/`). Do not skip MCP fetch/audit steps in the React Native skill.
+- If Stitch MCP is unauthenticated, tell the user to add `STITCH_API_KEY` in `.cursor/stitch.env` (from https://stitch.withgoogle.com Settings) or run `stitch-mcp init --client cursor --local`, then reload MCP. Do not invent screens from memory.

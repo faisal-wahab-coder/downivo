@@ -1,0 +1,38 @@
+{
+  "projectId": "7854375430906656743",
+  "title": "Universal Downloader — Premium UI",
+  "deviceType": "MOBILE",
+  "Last Sync Time": "2026-08-15T18:30:00Z",
+  "designSystem": "assets/11885142223137284803",
+  "screens": {
+    "3ec87aa1fe6543449d1195e766446711": {
+      "id": "3ec87aa1fe6543449d1195e766446711",
+      "label": "Home - Universal Downloader",
+      "deviceType": "MOBILE",
+      "local": ".stitch/designs/home-mobile.png"
+    },
+    "a119809ea4d84f1489da149bb5d4dcaa": {
+      "id": "a119809ea4d84f1489da149bb5d4dcaa",
+      "label": "Downloads - Universal Downloader",
+      "deviceType": "MOBILE",
+      "local": ".stitch/designs/downloads-mobile.png"
+    },
+    "fcb1de5ca1f641ceadf99a60c4e20c09": {
+      "id": "fcb1de5ca1f641ceadf99a60c4e20c09",
+      "label": "Home - Desktop Layout",
+      "deviceType": "DESKTOP",
+      "local": ".stitch/designs/home-desktop.png"
+    },
+    "41cafc177a814548bc8ba5784469ec61": {
+      "id": "41cafc177a814548bc8ba5784469ec61",
+      "label": "Settings - Universal Downloader",
+      "deviceType": "MOBILE",
+      "local": ".stitch/designs/settings-mobile.png"
+    },
+    "501fe47fa7174652a09c2e832679ca90": {
+      "id": "501fe47fa7174652a09c2e832679ca90",
+      "label": "Files - Universal Downloader",
+      "deviceType": "MOBILE"
+    }
+  }
+}

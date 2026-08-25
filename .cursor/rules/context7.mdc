@@ -1,0 +1,33 @@
+---
+description: Use Context7 MCP for up-to-date library docs; CLI skill as fallback
+alwaysApply: true
+---
+
+# Context7 documentation
+
+Use **Context7 MCP** (`resolve-library-id`, `query-docs`) for library/API documentation. Fall back to the **CLI skill** (`docs`) if MCP is unavailable.
+
+## When to use
+
+- React Native, React, React Navigation, Reanimated, Gesture Handler, or any dependency in this repo
+- Setup, configuration, migration, or API questions for those libraries
+- Android native modules, SQLite, or download/networking libraries used by the app
+
+## How to use (MCP preferred)
+
+1. Call `resolve-library-id` with `libraryName` and a specific `query`
+2. Call `query-docs` with the returned `libraryId` and your `query`
+
+Prefer **known Context7 library IDs** when you already know them (skips step 1):
+
+| Library | Context7 ID (verify with `ctx7 library` if unsure) |
+|---------|-----------------------------------------------------|
+| React Native | `/facebook/react-native` |
+| React | `/facebook/react` |
+| React Navigation | `/react-navigation/react-navigation` |
+
+## Token efficiency
+
+- Fetch docs **only for the library and question needed** — do not prefetch unrelated packages.
+- Mention the version in the query when it matters (e.g. React Native 0.81).
+- Pass a specific `query` so Context7 returns targeted snippets, not full doc dumps.
