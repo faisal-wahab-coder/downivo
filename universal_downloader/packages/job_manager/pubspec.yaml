@@ -5,12 +5,12 @@ version: 0.1.0
 
 environment:
   sdk: ^3.10.0
-  flutter: ">=3.24.0"
+  flutter: ">=3.44.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  flutter_foreground_task: ^9.1.0
+  flutter_foreground_task: ^11.0.1
   connectivity_plus: ^6.1.4
   download_engine:
     path: ../download_engine

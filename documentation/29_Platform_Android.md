@@ -50,10 +50,10 @@ API 29 (Android 10) per ADR-006.
 Match Flutter 3.47 templates:
 
 - `:app` does **not** apply `kotlin-android` (built-in Kotlin via AGP 9).
-- Keep `android.builtInKotlin=false` so third-party plugins that still apply `kotlin-android` can build. Flutter warns about those plugins; they are not a current failure.
+- `android.builtInKotlin=true` after plugins that apply KGP were upgraded (`flutter_foreground_task` 11, `receive_sharing_intent` 1.9, `share_plus` 13, and current Android implementations of `shared_preferences` / `webview_flutter` / `video_player`). `mobile_scanner` 7.4 still contains a conditional KGP apply for AGP &lt; 9, so Flutter may still print a KGP warning even though it does not apply KGP when built-in Kotlin is on.
 
-- Gradle 9.3.1
-- Android Gradle Plugin 9.1.0
+- Gradle 9.4.1
+- Android Gradle Plugin 9.2.1
 - Kotlin 2.4.0
-- compileSdk / targetSdk from Flutter (36)
+- compileSdk 37 (required by `receive_sharing_intent` 1.9); targetSdk from Flutter
 - Java / Kotlin JVM 17

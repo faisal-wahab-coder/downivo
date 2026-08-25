@@ -5,7 +5,7 @@ version: 0.1.0
 
 environment:
   sdk: ^3.10.0
-  flutter: ">=3.24.0"
+  flutter: ">=3.38.0"
 
 dependencies:
   flutter:
@@ -43,10 +43,9 @@ dependencies:
     path: ../universal_viewer
   shared_types:
     path: ../shared_types
-  webview_flutter: ^4.13.0
+  webview_flutter: ^4.14.0
   webview_flutter_web: ^0.2.3+4
-  # 1.9.0 requires Flutter 3.44+ built-in Kotlin, AGP 9, and compileSdk 37.
-  receive_sharing_intent: 1.8.1
+  receive_sharing_intent: ^1.9.0
   mobile_scanner: ^7.0.1
 
 dev_dependencies:

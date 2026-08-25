@@ -9,7 +9,7 @@ Path dependencies listed as `(path)`.
 ## apps/mobile — `universal_downloader` `1.2.0+4`
 
 **Dart:** `lib/main.dart` + tests  
-**Deps:** flutter_riverpod ^2.6.1, app_core (path), flutter_foreground_task ^9.1.0, shared_preferences ^2.5.3, path_provider_platform_interface ^2.1.2, plugin_platform_interface ^2.1.8, cupertino_icons ^1.0.8  
+**Deps:** flutter_riverpod ^2.6.1, app_core (path), flutter_foreground_task ^11.0.1, shared_preferences ^2.5.5, path_provider_platform_interface ^2.1.2, plugin_platform_interface ^2.1.8, cupertino_icons ^1.0.8  
 **Dev:** flutter_lints ^6.0.0, sqflite_common_ffi ^2.3.6
 
 ## apps/web — `universal_downloader_web` `1.2.0+4`
@@ -22,7 +22,7 @@ Path dependencies listed as `(path)`.
 
 Bootstrap, providers, AppRouter, all live screens.
 
-**Deps:** flutter_riverpod, go_router ^16.2.0, shared_preferences, database, design_system, navigation, download_engine, media_library, browser, performance, content_intake, job_manager, shared_utils, permissions, storage, udm_search, universal_viewer, shared_types, webview_flutter ^4.13.0, webview_flutter_web ^0.2.3+4, receive_sharing_intent 1.8.1, mobile_scanner ^7.0.1
+**Deps:** flutter_riverpod, go_router ^16.2.0, shared_preferences, database, design_system, navigation, download_engine, media_library, browser, performance, content_intake, job_manager, shared_utils, permissions, storage, udm_search, universal_viewer, shared_types, webview_flutter ^4.14.0, webview_flutter_web ^0.2.3+4, receive_sharing_intent ^1.9.0, mobile_scanner ^7.0.1
 
 ### Feature files (must exist)
 
@@ -103,11 +103,11 @@ Files: `design_system.dart`, `spacing.dart`, `udm_colors.dart`, `app_theme.dart`
 
 ## job_manager (~7 Dart)
 
-**Deps:** flutter_foreground_task ^9.1.0, connectivity_plus ^6.1.4, download_engine, notifications, shared_types
+**Deps:** flutter_foreground_task ^11.0.1, connectivity_plus ^6.1.4, download_engine, notifications, shared_types
 
 ## media_library (~22 Dart)
 
-**Deps:** path, mime ^2.0.0, open_filex ^4.7.0, share_plus ^10.1.4, gal ^2.3.3, shared_preferences, storage, shared_utils, performance
+**Deps:** path, mime ^2.0.0, open_filex ^4.7.0, share_plus ^13.2.1, gal ^2.3.3, shared_preferences, storage, shared_utils, performance
 
 ## navigation (~5 Dart)
 
@@ -144,4 +144,4 @@ transfer format helpers
 
 ## universal_viewer (~6 Dart)
 
-**Deps:** video_player ^2.10.0, design_system
+**Deps:** video_player ^2.14.0, design_system

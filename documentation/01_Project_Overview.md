@@ -80,11 +80,11 @@ Application version: **`1.2.0+4`**.
 | HTTP | Dio 5.9 |
 | Database | sqflite 2.4, schema v4 |
 | Settings | shared_preferences |
-| Background | flutter_foreground_task 9 |
+| Background | flutter_foreground_task 11 |
 | Notifications | flutter_local_notifications 19 |
 | Browser | webview_flutter 4 |
 | QR | mobile_scanner 7 |
-| Share | receive_sharing_intent 1.8.1 |
+| Share | receive_sharing_intent 1.9 |
 | Theme | Material Design 3 |
 | Workspace | Melos 8 |
 

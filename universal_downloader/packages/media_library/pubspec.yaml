@@ -13,9 +13,9 @@ dependencies:
   path: ^1.9.1
   mime: ^2.0.0
   open_filex: ^4.7.0
-  share_plus: ^10.1.4
+  share_plus: ^13.2.1
   gal: ^2.3.3
-  shared_preferences: ^2.5.3
+  shared_preferences: ^2.5.5
   storage:
     path: ../storage
   shared_utils:

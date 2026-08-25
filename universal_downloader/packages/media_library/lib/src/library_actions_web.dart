@@ -21,9 +21,13 @@ Future<void> shareLibraryFileOnPlatform(
   FileStore store,
 ) async {
   final bytes = await store.readBytes(file.path);
-  await Share.shareXFiles([
-    XFile.fromData(bytes, name: file.name, mimeType: file.mimeType),
-  ], text: file.name);
+  await SharePlus.instance.share(
+    ShareParams(
+      files: [XFile.fromData(bytes, mimeType: file.mimeType)],
+      text: file.name,
+      fileNameOverrides: [file.name],
+    ),
+  );
 }
 
 Future<LibraryGallerySaveResult> saveLibraryFileToGalleryOnPlatform(

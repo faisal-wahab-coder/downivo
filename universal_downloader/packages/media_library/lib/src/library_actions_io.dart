@@ -19,7 +19,9 @@ Future<LibraryOpenResult> openLibraryFileOnPlatform(
 }
 
 Future<void> shareLibraryFileOnPlatform(LibraryFile file, FileStore store) {
-  return Share.shareXFiles([XFile(file.path)], text: file.name);
+  return SharePlus.instance.share(
+    ShareParams(files: [XFile(file.path)], text: file.name),
+  );
 }
 
 Future<LibraryGallerySaveResult> saveLibraryFileToGalleryOnPlatform(
