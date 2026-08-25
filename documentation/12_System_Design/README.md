@@ -26,8 +26,8 @@ Original `/docs/12_System_Design` described a larger platform. This folder recor
 | 12.20 Background scheduler | Foreground task only |
 | 12.21 Permission manager | `permissions` |
 | 12.22 Settings manager | `settingsProvider` + prefs |
-| 12.23 Analytics | **DO NOT BUILD** |
-| 12.24 Logging | Dart `debugPrint` / foundation — no log package |
+| 12.23 Analytics | **Implemented** — [31](../31_Observability_Analytics.md); no-op without keys |
+| 12.24 Logging | `AppLogger` in analytics package |
 | 12.25 Errors | formatter + snackbars |
 | 12.26 File import | intake + Files import sheet |
 | 12.27 File export | **DO NOT BUILD UI** (Share + Save to Gallery on the file) |

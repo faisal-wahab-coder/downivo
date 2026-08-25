@@ -14,6 +14,10 @@
 | M8 | History FR-049/050, a11y, RC |
 | M9 | 1.0.0+2 release engineering |
 
+## Next (after V1, when explicitly requested)
+
+Observability & Analytics — [31_Observability_Analytics.md](31_Observability_Analytics.md). First slice: Crashlytics, `AppLogger`, `AnalyticsService`, platform + download funnel. Then 2–4 weeks of production data before new product features.
+
 ## Future (do not build in replica)
 
 Cloud sync, iOS, desktop companion, AI, OCR, collections, activity center, Drift migration, notification center, storage folder picker.

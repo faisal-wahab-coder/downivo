@@ -9,7 +9,7 @@
 3. If `onboarding_complete` is not true → `/onboarding` (5 steps: welcome, storage init, notifications, camera, clipboard/finish).
 4. Complete → set pref → `context.go(/home)`.
 
-Copy that tests depend on: “Welcome to Universal Downloader”, “Get started”.
+Copy that tests depend on: “Welcome to Downivo”, “Get started”.
 
 ---
 

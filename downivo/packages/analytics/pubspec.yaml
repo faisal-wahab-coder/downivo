@@ -1,0 +1,30 @@
+name: analytics
+description: Observability — AppLogger, AnalyticsService, Crashlytics, PostHog, Remote Config.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.0
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # 4.x / 5.x / 6.x: AGP 9 built-in Kotlin. firebase_remote_config 5.x
+  # still applies kotlin-android and fails assembleDebug.
+  firebase_core: ^4.14.0
+  firebase_crashlytics: ^5.3.0
+  firebase_performance: ^0.11.5
+  firebase_remote_config: ^6.6.0
+  posthog_flutter: ^5.3.1
+  connectivity_plus: ^6.1.4
+  device_info_plus: ^13.0.0
+  package_info_plus: ^10.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

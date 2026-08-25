@@ -1,6 +1,6 @@
 # Functional Requirements
 
-Project: Universal Downloader  
+Project: Downivo  
 Version: 1.0.0 as-built  
 Status: Approved for rebuild
 

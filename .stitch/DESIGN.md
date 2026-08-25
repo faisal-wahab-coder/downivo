@@ -1,4 +1,4 @@
-# Design System: Universal Downloader
+# Design System: Downivo
 
 A dark-first premium media utility. Paste a link, download it, manage the file. The atmosphere is restrained and technical — a precision instrument, not a social network and not an admin dashboard.
 

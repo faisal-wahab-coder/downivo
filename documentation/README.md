@@ -1,6 +1,6 @@
-# Universal Downloader — Rebuild Documentation
+# Downivo — Rebuild Documentation
 
-**Purpose:** This folder is a complete, as-built specification so another Cursor (or engineer) can recreate an **exact copy** of Universal Downloader.
+**Purpose:** This folder is a complete, as-built specification so another Cursor (or engineer) can recreate an **exact copy** of Downivo.
 
 **Status:** Production (`1.2.0+4`)  
 **Captured:** 19 August 2026  
@@ -21,7 +21,7 @@ Where any older document conflicts with these files, **these files win**.
 
 ## What this product is
 
-Universal Downloader is a **Flutter** Android (plus Flutter Web) download manager:
+Downivo is a **Flutter** Android (plus Flutter Web) download manager:
 
 - Paste or share a URL → resolve social/media sources → queue downloads
 - Pause / resume (HTTP Range), background foreground service, notifications
@@ -70,6 +70,7 @@ It is **not** React Native. Original `/docs` still mention RN/Zustand/TypeScript
 | [28_Dependencies.md](28_Dependencies.md) | pubspec versions |
 | [29_Platform_Android.md](29_Platform_Android.md) | Manifest, permissions, signing |
 | [30_Rebuild_Checklist.md](30_Rebuild_Checklist.md) | Step-by-step recreation |
+| [31_Observability_Analytics.md](31_Observability_Analytics.md) | Planned crash, logs, analytics (not V1) |
 | [UI_CURRENT_SCREEN_MAP.md](UI_CURRENT_SCREEN_MAP.md) | Screen inventory |
 | [UI_CURRENT_FEATURE_MAP.md](UI_CURRENT_FEATURE_MAP.md) | Feature inventory |
 | [AGENTS.md](AGENTS.md) | AI engineering rules |
@@ -80,13 +81,14 @@ It is **not** React Native. Original `/docs` still mention RN/Zustand/TypeScript
 
 ## Hard rules for a replica
 
-1. **Flutter 3.24+ / Dart 3.10**, Melos monorepo under `universal_downloader/`.
+1. **Flutter 3.24+ / Dart 3.10**, Melos monorepo under `downivo/`.
 2. **sqflite** (schema version 4) — do **not** start with Drift even though ADR-002 planned it.
 3. **Riverpod + GoRouter + StatefulShellRoute** (5 tabs).
 4. Recreate only **implemented** packages listed in `melos.yaml`. Empty stub folders (`activity`, `collections`, …) are optional and unused.
 5. Do **not** build Collections, Activity Center, Notification Center, cloud sync, AI, or encryption vault as product features.
-6. Android applicationId / label: `Universal Downloader`. Version `1.2.0+4`.
+6. Android applicationId `com.pm.downivo`, label `Downivo`. Version `1.2.0+4`.
 7. Max **3 concurrent** downloads. HTTP Range pause/resume. Dio HTTP client.
+8. Observability lives in `packages/analytics`. Never send full URLs or tokens. Crashlytics/PostHog stay silent until keys are configured ([31_Observability_Analytics.md](31_Observability_Analytics.md)).
 
 ---
 
@@ -96,7 +98,7 @@ It is **not** React Native. Original `/docs` still mention RN/Zustand/TypeScript
 <repo>/
 ├── documentation/          # this folder
 ├── docs/                   # original drafts (historical; do not follow blindly)
-└── universal_downloader/   # the app
+└── downivo/   # the app
     ├── apps/mobile/        # Android Flutter app
     ├── apps/web/           # Flutter Web app
     ├── packages/           # feature + infra packages

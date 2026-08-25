@@ -1,0 +1,9 @@
+{
+  "_comment": "Replace this file with the google-services.json from a Firebase Android app registered as com.pm.downivo. Copy it to android/app/google-services.json. Crashlytics stays disabled until that file exists.",
+  "project_info": {
+    "project_number": "0",
+    "project_id": "your-firebase-project"
+  },
+  "client": [],
+  "configuration_version": "1"
+}

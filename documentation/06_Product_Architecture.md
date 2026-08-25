@@ -21,6 +21,7 @@
    permissions      notifications  performance
    search           universal_viewer
    shared_types     shared_utils
+   analytics
 ```
 
 ---
@@ -29,7 +30,7 @@
 
 1. `bootstrap()` creates `AppInitializer`, `StoragePaths`, `SharedPreferences`, `DownloadManager`, `GoRouter`.
 2. `ProviderContainer` overrides: prefs, initializer, storage path, download manager, router.
-3. `UniversalDownloaderApp` watches theme + router.
+3. `DownivoApp` watches theme + router.
 4. Feature widgets read Riverpod providers (`downloadListProvider`, `libraryBrowseProvider`, `settingsProvider`, …).
 5. `DownloadManager.tasksStream` is the live queue bus (no separate event-bus package).
 

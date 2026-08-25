@@ -5,10 +5,10 @@
 
 ## Decision
 
-All application code lives under `universal_downloader/` with Melos.
+All application code lives under `downivo/` with Melos.
 
 ```
-universal_downloader/
+downivo/
 ├── apps/mobile/
 ├── apps/web/
 └── packages/

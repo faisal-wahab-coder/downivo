@@ -1,4 +1,4 @@
-# AGENTS.md — Universal Downloader (rebuild)
+# AGENTS.md — Downivo (rebuild)
 
 ## Purpose
 
@@ -19,7 +19,8 @@ Rules for AI assistants recreating or extending this app.
 - Replace sqflite with Drift “because ADR-002 said so”
 - Add a sixth tab
 - Put live screens in `navigation/tab_screens.dart`
-- Commit secrets or `key.properties`
+- Commit secrets, `key.properties`, or PostHog API keys
+- Send full URLs, tokens, cookies, or file contents to Crashlytics / PostHog / logs
 
 ## Roles (mapped from original)
 

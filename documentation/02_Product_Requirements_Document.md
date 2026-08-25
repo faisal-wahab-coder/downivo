@@ -1,6 +1,6 @@
 # Product Requirements Document (PRD)
 
-Project: Universal Downloader  
+Project: Downivo  
 Version: 1.0.0 as-built  
 Status: Approved for rebuild
 
@@ -10,7 +10,7 @@ Status: Approved for rebuild
 
 This PRD defines the **shipped V1** product. Recreate this scope. Do not expand into Media Hub / cloud / AI.
 
-Universal Downloader is a professional Android download manager that downloads, organizes, previews, and manages files from supported and authorized sources.
+Downivo is a professional Android download manager that downloads, organizes, previews, and manages files from supported and authorized sources.
 
 ---
 
@@ -66,6 +66,7 @@ The application shall:
 - Encrypted vault product, OCR, AI tagging
 - Per-item history delete, export, storage-root folder picker
 - Settings notification toggle (permission is onboarding-only)
+- Crashlytics / PostHog / product analytics (V1 has none; see [31](31_Observability_Analytics.md) when that milestone starts)
 
 ---
 

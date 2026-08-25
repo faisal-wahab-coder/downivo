@@ -1,4 +1,4 @@
-# Universal Downloader — Project Overview
+# Downivo — Project Overview
 
 Version: 1.0.0 (as-built)  
 Document type: Project Overview  
@@ -9,11 +9,11 @@ Last updated: August 2026
 
 # 1. Introduction
 
-Universal Downloader is a modern **Android** (and Flutter Web) application for downloading, organizing, previewing, and managing files from supported and authorized sources.
+Downivo is a modern **Android** (and Flutter Web) application for downloading, organizing, previewing, and managing files from supported and authorized sources.
 
 Unlike a classic download manager that only fetches bytes, this product is a complete download experience: queue management, background transfers, intelligent source resolution, file organization, an in-app browser, clipboard/share/QR intake, and a Material Design 3 interface.
 
-**V1 is complete** (milestones M1–M9). Future versions may grow toward a Media Hub; those features are out of scope for a V1 replica.
+**V1 is complete** (milestones M1–M9). The next engineering milestone is Observability & Analytics ([31](31_Observability_Analytics.md)), not Media Hub features. Hub ideas remain out of scope for a V1 replica.
 
 ---
 

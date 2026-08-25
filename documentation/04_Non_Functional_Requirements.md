@@ -1,6 +1,6 @@
 # Non-Functional Requirements
 
-Project: Universal Downloader  
+Project: Downivo  
 Version: 1.0.0 as-built
 
 ---
@@ -30,7 +30,8 @@ Version: 1.0.0 as-built
 
 # 3. Security and privacy
 
-- No user accounts. No cloud. All metadata on-device.
+- No user accounts. No cloud sync. All download metadata on-device.
+- V1: no analytics SDK. Next milestone may add Crashlytics + PostHog behind `AnalyticsService` with URL/token sanitization ([31](31_Observability_Analytics.md)).
 - HTTPS for downloads; Dio default.
 - Do not download private WhatsApp media CDNs.
 - Camera permission only for QR.

@@ -16,7 +16,8 @@ The original `/docs` folder was written **before** implementation and assumed Re
 | Drift codegen M2 | Never landed — stay on sqflite |
 | Event bus package | Riverpod streams (`tasksStream`) |
 | networking package | Dio lives inside `download_engine` |
-| platform_android / scanner / analytics packages | Empty stubs; **not in melos.yaml** |
+| platform_android / scanner packages | Empty stubs; **not in melos.yaml** |
+| analytics package | **Melos member.** Crashlytics + PostHog behind `AnalyticsService` ([31](31_Observability_Analytics.md)) |
 
 ## ADR vs code
 
@@ -33,6 +34,10 @@ The original `/docs` folder was written **before** implementation and assumed Re
 
 These folders may exist with `0` Dart files and are **not** Melos workspace members:
 
-`activity`, `analytics`, `collections`, `download_source_sdk`, `mcp_server`, `metadata_extractor`, `networking`, `platform_android`, `platform_interface`, `scanner`, `settings`, `testing`, `thumbnail_generator`
+`activity`, `collections`, `download_source_sdk`, `mcp_server`, `metadata_extractor`, `networking`, `platform_android`, `platform_interface`, `scanner`, `settings`, `testing`, `thumbnail_generator`
 
-A working replica does **not** need them.
+A working replica does **not** need those stubs. `analytics` **is** a Melos member ([31](31_Observability_Analytics.md)).
+
+## Product identity
+
+Formerly **Universal Downloader**. Display name is **Downivo**. Android `applicationId` / namespace is `com.pm.downivo`. Melos root folder is `downivo/`. Storage folder and Gallery album are `Downivo`. SQLite file is `downivo.db`.

@@ -6,7 +6,7 @@ Work **in this order**. Do not skip to social resolvers before the queue works w
 
 - [ ] Flutter 3.24+ / Dart 3.10
 - [ ] Android SDK API 29+
-- [ ] Create `universal_downloader/` Melos workspace
+- [ ] Create `downivo/` Melos workspace
 
 ## M1 Foundation
 
@@ -68,6 +68,16 @@ Work **in this order**. Do not skip to social resolvers before the queue works w
 - [ ] `apps/web` stubs
 - [ ] `scripts/ci.sh` green
 - [ ] Version 1.0.0+2, RELEASE/CHANGELOG/QA_CHECKLIST
+
+## M10 Observability (not part of V1 replica)
+
+Do this only when implementing analytics. Spec: [31_Observability_Analytics.md](31_Observability_Analytics.md).
+
+- [ ] Promote `packages/analytics` to Melos; `AnalyticsService` + sanitizer
+- [ ] Crashlytics (Flutter + Android), custom keys, release reporting
+- [ ] `AppLogger` (no URLs/tokens)
+- [ ] PostHog events: lifecycle, paste, platform, resolve, download outcomes
+- [ ] Download funnel dashboard; privacy review + tests
 
 ## Acceptance
 

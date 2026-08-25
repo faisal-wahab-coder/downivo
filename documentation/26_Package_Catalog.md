@@ -6,13 +6,13 @@ Path dependencies listed as `(path)`.
 
 ---
 
-## apps/mobile — `universal_downloader` `1.2.0+4`
+## apps/mobile — `downivo` `1.2.0+4`
 
 **Dart:** `lib/main.dart` + tests  
 **Deps:** flutter_riverpod ^2.6.1, app_core (path), flutter_foreground_task ^11.0.1, shared_preferences ^2.5.5, path_provider_platform_interface ^2.1.2, plugin_platform_interface ^2.1.8, cupertino_icons ^1.0.8  
 **Dev:** flutter_lints ^6.0.0, sqflite_common_ffi ^2.3.6
 
-## apps/web — `universal_downloader_web` `1.2.0+4`
+## apps/web — `downivo_web` `1.2.0+4`
 
 **Deps:** flutter_riverpod, app_core (path), sqflite_common_ffi_web ^1.0.4, cupertino_icons
 
@@ -28,7 +28,7 @@ Bootstrap, providers, AppRouter, all live screens.
 
 ```
 lib/app_core.dart
-lib/src/app/universal_downloader_app.dart
+lib/src/app/downivo_app.dart
 lib/src/bootstrap/bootstrap.dart
 lib/src/bootstrap/app_initializer.dart
 lib/src/bootstrap/intake_scope.dart
@@ -114,6 +114,12 @@ Files: `design_system.dart`, `spacing.dart`, `udm_colors.dart`, `app_theme.dart`
 **Deps:** go_router, design_system, permissions, shared_types  
 Owns: MainShell, OnboardingFlow, tab placeholder file (unused)
 
+## analytics (Melos member)
+
+`AnalyticsService`, `AppLogger`, Crashlytics/PostHog adapters, Remote Config, privacy sanitizer. See [31_Observability_Analytics.md](31_Observability_Analytics.md). `app_core` / `download_engine` must not import vendor SDKs directly (`download_engine` uses `DownloadEngineTelemetry` callbacks).
+
+**Deps:** firebase_core, firebase_crashlytics, firebase_performance, firebase_remote_config, posthog_flutter, connectivity_plus, device_info_plus, package_info_plus
+
 ## notifications (~4 Dart)
 
 **Deps:** flutter_local_notifications ^19.0.0
@@ -130,9 +136,9 @@ No extra deps. TTL, LRU, ThrottleGate, metrics.
 
 **Deps:** shared_preferences, download_engine, media_library, shared_types, storage
 
-## shared_types (~4 Dart)
+## shared_types (~5 Dart)
 
-`app_routes.dart`, `download_status.dart`, `theme_mode_preference.dart`, barrel
+`app_identity.dart`, `app_routes.dart`, `download_status.dart`, `theme_mode_preference.dart`, barrel
 
 ## shared_utils (~3 Dart)
 

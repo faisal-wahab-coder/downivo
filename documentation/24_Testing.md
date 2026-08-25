@@ -13,4 +13,6 @@ Minimum replica tests:
 7. History semantics
 8. Representative resolver tests (YouTube host, WhatsApp private CDN rejection, Telegram hosts)
 
-QA markdown under `universal_downloader/qa/` may be copied if available; not required to compile.
+QA markdown under `downivo/qa/` may be copied if available; not required to compile.
+
+Observability tests (Crashlytics, event properties, URL sanitizer) are specified in [31](31_Observability_Analytics.md) Phase 17 — not required for a V1 replica.

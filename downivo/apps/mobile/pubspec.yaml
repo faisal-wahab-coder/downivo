@@ -1,0 +1,35 @@
+name: downivo
+description: Downivo - Android download manager
+publish_to: none
+version: 1.2.0+4
+
+environment:
+  sdk: ^3.10.0
+  flutter: ">=3.44.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.6.1
+  app_core:
+    path: ../../packages/app_core
+  flutter_foreground_task: ^11.0.1
+  shared_preferences: ^2.5.5
+  path_provider_platform_interface: ^2.1.2
+  plugin_platform_interface: ^2.1.8
+  cupertino_icons: ^1.0.8
+
+dependency_overrides:
+  # Federated Android impls that still applied KGP in the versions
+  # pulled by older plugin constraints.
+  shared_preferences_android: 2.4.27
+  webview_flutter_android: 4.14.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  sqflite_common_ffi: ^2.3.6
+
+flutter:
+  uses-material-design: true

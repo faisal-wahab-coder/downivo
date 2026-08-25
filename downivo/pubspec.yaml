@@ -1,0 +1,8 @@
+name: downivo_workspace
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dev_dependencies:
+  melos: ^8.2.2

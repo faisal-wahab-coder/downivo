@@ -1,7 +1,7 @@
-# Cursor rules — Universal Downloader replica
+# Cursor rules — Downivo replica
 
 ```
-You are building Universal Downloader, a Flutter Android download manager.
+You are building Downivo, a Flutter Android download manager.
 
 Source of truth: the documentation/ folder you were given.
 Ignore React Native, Zustand, TypeScript, Drift, Hive, and extra hub screens.
@@ -12,7 +12,9 @@ Engine: DownloadManager maxConcurrent 3, 16 social resolvers, HTTP Range.
 Files tab IS the media library.
 
 Do not invent features. Follow 30_Rebuild_Checklist.md.
+Observability is documentation/31_Observability_Analytics.md — not part of M1–M9.
+Never send URLs or tokens to analytics/logs.
 Production-ready code only. Keep diffs scoped to the current milestone.
 ```
 
-Place this in the replica repo as `.cursor/rules/universal-downloader.mdc` if desired.
+Place this in the replica repo as `.cursor/rules/downivo.mdc` if desired.

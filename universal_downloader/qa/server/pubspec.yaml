@@ -1,7 +1,0 @@
-name: udm_qa_server
-description: Local HTTP fixture server for Universal Downloader QA.
-publish_to: none
-version: 1.0.0
-
-environment:
-  sdk: ^3.10.0

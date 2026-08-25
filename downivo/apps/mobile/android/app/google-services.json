@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "881671303089",
+    "project_id": "downivo",
+    "storage_bucket": "downivo.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:881671303089:android:d526f4d44ec89bd9a39790",
+        "android_client_info": {
+          "package_name": "com.pm.downivo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDgqTUhr-Dk6epnBw4rnz8M2Nwe2H-V49g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

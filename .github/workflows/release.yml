@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: universal_downloader
+        working-directory: downivo
     steps:
       - uses: actions/checkout@v4
 
@@ -33,5 +33,5 @@ jobs:
         with:
           name: release-${{ github.ref_name }}
           path: |
-            universal_downloader/apps/mobile/build/app/outputs/bundle/release/app-release.aab
-            universal_downloader/apps/mobile/build/app/outputs/mapping/release/mapping.txt
+            downivo/apps/mobile/build/app/outputs/bundle/release/app-release.aab
+            downivo/apps/mobile/build/app/outputs/mapping/release/mapping.txt

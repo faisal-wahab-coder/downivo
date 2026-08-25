@@ -1,6 +1,8 @@
 # 28. Dependencies
 
-Pin to these ranges unless a security patch requires a bump. Do not add GetIt, Drift, Hive, Bloc, Firebase, or extra social SDKs.
+Pin to these ranges unless a security patch requires a bump. Do not add GetIt, Drift, Hive, Bloc, or extra social SDKs.
+
+Firebase Crashlytics, Firebase Remote Config, Firebase Performance, and PostHog are added via the `analytics` package. They no-op until `google-services.json` and `POSTHOG_API_KEY` are configured. See [31_Observability_Analytics.md](31_Observability_Analytics.md).
 
 | Package | Version |
 |---------|---------|

@@ -1,17 +1,17 @@
-# Cursor Rebuild Prompt — Universal Downloader (exact copy)
+# Cursor Rebuild Prompt — Downivo (exact copy)
 
 Copy everything below the line into a new Cursor chat (or AGENTS.md) when recreating this product from scratch.
 
 ---
 
-You are rebuilding **Universal Downloader**, a production Flutter download manager. Your job is to recreate an **exact functional and architectural copy** of the as-built V1 app (`1.0.0+2`), not the original React Native specification.
+You are rebuilding **Downivo**, a production Flutter download manager. Your job is to recreate an **exact functional and architectural copy** of the as-built V1 app (`1.0.0+2`), not the original React Native specification.
 
 ## Absolute constraints
 
 - Stack: **Flutter >= 3.24**, **Dart ^3.10**, **Material Design 3**.
 - State: **flutter_riverpod ^2.6.1**. Navigation: **go_router ^16.2** with `StatefulShellRoute.indexedStack`.
 - HTTP: **dio ^5.9**. Database: **sqflite ^2.4.2** (schemaVersion **4**). Settings: **shared_preferences**.
-- Monorepo: Melos. Root folder name: `universal_downloader/`.
+- Monorepo: Melos. Root folder name: `downivo/`.
 - V1 platforms: **Android 10+ (API 29)** primary; also ship **Flutter Web** (`apps/web`) sharing `app_core`.
 - Language: **Dart only** (no TypeScript, no React Native, no Zustand, no Redux).
 - Production-ready code. No placeholder architecture. No demo screens in the live router.
@@ -31,6 +31,7 @@ These exist only as empty folders or old docs. **Skip them:**
 - Cloud sync, AI organization, OCR search, encryption vault UI
 - Desktop/tablet NavigationRail as the shipping shell (mobile is bottom `NavigationBar` only)
 - Export UI, editable storage-root picker, per-tile delete of active downloads, Settings notification toggle
+- Firebase Crashlytics, PostHog, or product analytics (empty `packages/analytics` stub). Implement only when building [31_Observability_Analytics.md](31_Observability_Analytics.md); never send full URLs or tokens.
 
 ## Do implement (complete V1)
 
@@ -49,9 +50,9 @@ Milestones M1–M9, all complete in the original:
 ## Repository structure (required)
 
 ```
-universal_downloader/
-  apps/mobile/          # name: universal_downloader, version 1.0.0+2
-  apps/web/             # name: universal_downloader_web
+downivo/
+  apps/mobile/          # name: downivo, version 1.0.0+2
+  apps/web/             # name: downivo_web
   packages/
     app_core/           # bootstrap, providers, ALL live screens
     browser/
@@ -75,7 +76,7 @@ universal_downloader/
   README.md, RELEASE.md, CHANGELOG.md, QA_CHECKLIST.md
 ```
 
-`apps/mobile/lib/main.dart` must only bootstrap: `FlutterForegroundTask.initCommunicationPort()`, `bootstrap()`, `UncontrolledProviderScope` + `WithForegroundTask` + `UniversalDownloaderApp`.
+`apps/mobile/lib/main.dart` must only bootstrap: `FlutterForegroundTask.initCommunicationPort()`, `bootstrap()`, `UncontrolledProviderScope` + `WithForegroundTask` + `DownivoApp`.
 
 Live UI lives in `packages/app_core`. Placeholder widgets in `navigation/lib/src/screens/tab_screens.dart` must **not** be wired into the router.
 
@@ -145,7 +146,7 @@ Package `receive_sharing_intent: 1.8.1`, `mobile_scanner`, `webview_flutter`, `f
 
 Light-first. Light seed `#1B6EF3` (electricBlue). Dark seed `#2F9EAE` (signalCyan). Tokens in `UdmColors`. 8-point spacing (`UdmSpacing`). Card radius 12, sheet 16.
 
-Widget tests depend on copy: **“Welcome to Universal Downloader”**, **“Get started”**, **“Download detected”**, history semantics `{fileName}, {status}`.
+Widget tests depend on copy: **“Welcome to Downivo”**, **“Get started”**, **“Download detected”**, history semantics `{fileName}, {status}`.
 
 ## Settings model (exact — do not invent keys)
 

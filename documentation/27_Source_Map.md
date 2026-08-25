@@ -3,7 +3,7 @@
 Recreate this tree. Omit `build/`, `.dart_tool/`.
 
 ```
-universal_downloader/
+downivo/
 ├── melos.yaml
 ├── pubspec.yaml
 ├── README.md
@@ -18,7 +18,7 @@ universal_downloader/
 │   ├── test/bootstrap_test.dart
 │   └── android/app/src/main/
 │       ├── AndroidManifest.xml
-│       └── kotlin/com/universaldownloader/universal_downloader/MainActivity.kt
+│       └── kotlin/com/pm/downivo/MainActivity.kt
 ├── apps/web/
 │   ├── pubspec.yaml
 │   └── lib/main.dart
@@ -72,6 +72,7 @@ universal_downloader/
     ├── permissions/lib/
     ├── search/lib/
     ├── shared_types/lib/src/
+    │   ├── app_identity.dart
     │   ├── app_routes.dart
     │   ├── download_status.dart
     │   └── theme_mode_preference.dart
@@ -95,7 +96,7 @@ Future<void> main() async {
     UncontrolledProviderScope(
       container: container,
       child: WithForegroundTask(
-        child: const UniversalDownloaderApp(),
+        child: const DownivoApp(),
       ),
     ),
   );
@@ -104,4 +105,4 @@ Future<void> main() async {
 
 ## ApplicationId
 
-Kotlin package `com.universaldownloader.universal_downloader`. Label `Universal Downloader`.
+`applicationId` / namespace `com.pm.downivo`. Label `Downivo`.
