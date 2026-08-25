@@ -5,7 +5,7 @@
     "display": "standalone",
     "background_color": "#1A052E",
     "theme_color": "#1A052E",
-    "description": "Paste a link, download it, manage the file.",
+    "description": "Download. Manage. Enjoy.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

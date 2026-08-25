@@ -57,6 +57,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Welcome to Downivo'), findsOneWidget);
+    expect(find.text('Download. Manage. Enjoy.'), findsOneWidget);
     expect(find.text('Get started'), findsOneWidget);
   });
 

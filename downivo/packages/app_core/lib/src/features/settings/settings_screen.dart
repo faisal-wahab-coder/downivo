@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_types/shared_types.dart';
 
-import '../../changelog/app_changelog.dart';
 import '../../changelog/changelog_dialog.dart';
 import '../../providers/analytics_providers.dart';
 import '../../providers/library_providers.dart';
@@ -265,7 +264,7 @@ class SettingsScreen extends ConsumerWidget {
       ListTile(
         leading: const Icon(Icons.info_outline),
         title: const Text('About'),
-        subtitle: Text('${AppIdentity.displayName} v$latestChangelogVersion'),
+        subtitle: const Text(AppIdentity.slogan),
         trailing: const Icon(Icons.chevron_right),
         onTap: () => showChangelogDialog(context),
       ),

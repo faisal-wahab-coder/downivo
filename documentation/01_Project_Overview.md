@@ -9,7 +9,7 @@ Last updated: August 2026
 
 # 1. Introduction
 
-Downivo is a modern **Android** (and Flutter Web) application for downloading, organizing, previewing, and managing files from supported and authorized sources.
+Downivo is a modern **Android** (and Flutter Web) application for downloading, organizing, previewing, and managing files from supported and authorized sources. Tagline: **Download. Manage. Enjoy.**
 
 Unlike a classic download manager that only fetches bytes, this product is a complete download experience: queue management, background transfers, intelligent source resolution, file organization, an in-app browser, clipboard/share/QR intake, and a Material Design 3 interface.
 

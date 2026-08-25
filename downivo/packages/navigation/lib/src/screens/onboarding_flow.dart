@@ -100,7 +100,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       icon: Icons.download_for_offline_outlined,
       title: 'Welcome to ${AppIdentity.displayName}',
       body: Text(
-        'Download, organize, and manage files with a fast, modern experience.',
+        AppIdentity.slogan,
         style: Theme.of(context).textTheme.bodyLarge,
       ),
       primaryActionLabel: 'Get started',
