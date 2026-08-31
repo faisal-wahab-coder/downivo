@@ -96,4 +96,4 @@ Reviewers check architecture boundaries, tests, and privacy. See [PROJECT_GOVERN
 
 ## 9. Merge
 
-Maintainers merge to `dev` or `main` according to the branch policy they publish on GitHub. Do not push to origin from contributor machines unless you are a maintainer.
+Maintainers merge contributor PRs into `dev`. Production updates are `dev` → `main`. Do not push to `dev` or `main`.

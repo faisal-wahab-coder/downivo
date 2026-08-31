@@ -2,6 +2,8 @@
 
 Summarize the change and why it is needed.
 
+**Target branch:** open this pull request against **`dev` only** (not `main`).
+
 ## Type of Change
 
 - [ ] Bug fix
