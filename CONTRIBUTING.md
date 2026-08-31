@@ -84,17 +84,26 @@ perf: improve download list rendering
 docs: update development setup
 ```
 
+## Branch policy
+
+- **`dev`** — integration branch. All contributor pull requests must target `dev`.
+- **`main`** — production. No direct pushes. Maintainers merge `dev` → `main` for a release.
+- Direct pushes to `dev` and `main` are blocked. Create your own branch (or work on a fork).
+
 ## Pull Request Process
 
-1. Fork [faisal-wahab-coder/downivo](https://github.com/faisal-wahab-coder/downivo) (or branch from `dev` / `main` if you have write access)
-2. Create a branch using the naming above
+1. Fork [faisal-wahab-coder/downivo](https://github.com/faisal-wahab-coder/downivo)
+2. Branch from **`dev`** using the naming above
 3. Implement the change in the correct package (see [docs/FEATURE_DEVELOPMENT.md](docs/FEATURE_DEVELOPMENT.md))
 4. Run `bash scripts/ci.sh` from `downivo/`
 5. Run analyze/tests for packages you touched if you skipped the full script
 6. Update documentation when behavior or setup changes
 7. Commit with a conventional message
-8. Push and open a pull request using [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md)
-9. Wait for review; address feedback
+8. Push to **your fork / your branch** (do not push to `dev` or `main`)
+9. Open a pull request **against `dev`** using [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md)
+10. Wait for review; address feedback
+
+Pull requests that target `main` (except a maintainer `dev` → `main` release PR) are closed automatically.
 
 Keep pull requests focused. Prefer several small PRs over one mixed refactor + feature + format dump.
 

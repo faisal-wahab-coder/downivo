@@ -17,7 +17,7 @@ The product changelog with historical releases also lives in [`downivo/CHANGELOG
 
 - `.gitignore` now excludes live `google-services.json` and additional secret patterns
 - CI validates `analytics`, `search`, and `universal_viewer` in addition to existing packages
-- Removed private Bitbucket compare URLs from the product changelog
+- Contributor PRs must target `dev`; direct pushes to `main` and `dev` are blocked
 
 ### Fixed
 

@@ -1,0 +1,47 @@
+name: PR target
+
+# Contributors open pull requests against `dev` only.
+# Maintainers may open `dev` → `main` for a release.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, edited]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  enforce-base:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require PRs to target dev
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const base = pr.base.ref;
+            const head = pr.head.ref;
+            const releaseToMain = base === 'main' && head === 'dev';
+            const contributionToDev = base === 'dev';
+            if (contributionToDev || releaseToMain) {
+              return;
+            }
+            const body =
+              'This repository only accepts contributor pull requests into **`dev`**.\n\n' +
+              '- Open a new PR with base branch `dev`.\n' +
+              '- Direct pushes to `main` and `dev` are blocked.\n' +
+              '- `main` is updated by maintainers via a `dev` → `main` PR.';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body,
+            });
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              state: 'closed',
+            });
+            core.setFailed('Pull requests must target the dev branch.');
