@@ -2,9 +2,16 @@ name: Flutter CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, dev]
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, dev]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate:
@@ -23,6 +30,8 @@ jobs:
       - name: Run analyze and tests
         run: bash scripts/ci.sh
 
+  # Debug-signed artifact only. Production Play uploads need local key.properties
+  # or repository secrets — those are intentionally not used in public CI.
   build-release:
     runs-on: ubuntu-latest
     needs: validate

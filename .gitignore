@@ -1,6 +1,8 @@
 # OS
 .DS_Store
 **/.DS_Store
+Thumbs.db
+Desktop.ini
 
 # MCP config may contain API keys — use .cursor/mcp.json.example as template
 .cursor/mcp.json
@@ -16,17 +18,41 @@
 **/build/
 **/*.iml
 .idea/
+.vscode/
 **/.flutter-plugins
 **/.flutter-plugins-dependencies
+
+# Melos
+**/.melos_tool/
+
+# Coverage and logs
+coverage/
+**/*.lcov
+*.log
+logs/
 
 # Android
 **/local.properties
 **/.gradle/
+**/captures/
 **/*.apk
 **/*.aab
 **/*.jks
 **/*.keystore
 **/key.properties
+
+# iOS / signing (not currently a target; keep secrets out)
+**/Pods/
+**/.symlinks/
+*.pem
+*.p12
+*.mobileprovision
+*.p8
+
+# Firebase — keep the example; never commit a live google-services.json
+**/google-services.json
+!**/google-services.json.example
+**/GoogleService-Info.plist
 
 # Archives
 *.zip
@@ -34,6 +60,8 @@
 # Local context-mode index (not source)
 .github/context-mode/
 
-# Environment
+# Environment — keep committed examples
 .env
 .env.*
+!.env.example
+!**/*.env.example

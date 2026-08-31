@@ -1,6 +1,6 @@
 # Downivo
 
-Flutter monorepo for Downivo (Android + Web).
+Flutter monorepo for Downivo (Android + Web). Contributor onboarding for the public project lives in the repository root [README.md](../README.md).
 
 ## Structure
 
@@ -44,7 +44,7 @@ Validate the monorepo: `bash scripts/ci.sh` from `downivo/`.
 
 ## Documentation
 
-Product and architecture specs live in the repo root: `../docs/`
+Product and architecture specs live in [`../documentation/`](../documentation/README.md). Open-source contributor guides: [`../docs/`](../docs/README.md).
 
 Release engineering: [`RELEASE.md`](RELEASE.md) · [`CHANGELOG.md`](CHANGELOG.md) · [`QA_CHECKLIST.md`](QA_CHECKLIST.md)
 

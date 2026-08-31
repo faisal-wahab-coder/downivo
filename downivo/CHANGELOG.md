@@ -6,6 +6,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 
 ## [Unreleased]
 
+### Added
+
+- Open-source GitHub preparation (license, contributing guides, issue/PR templates).
+
 ## [1.2.0] - 2026-08-25
 
 ### Added
@@ -46,9 +50,3 @@ First production release (Android, V1 scope).
 ## [1.0.0-rc.1] - 2026-08-15
 
 Release candidate — feature complete, QA checklist provided.
-
-[Unreleased]: https://bitbucket.org/app_ideas/downloader/branches/compare/main%0Dv1.2.0
-[1.2.0]: https://bitbucket.org/app_ideas/downloader/src/v1.2.0/
-[1.1.0]: https://bitbucket.org/app_ideas/downloader/src/v1.1.0/
-[1.0.0]: https://bitbucket.org/app_ideas/downloader/src/v1.0.0/
-[1.0.0-rc.1]: https://bitbucket.org/app_ideas/downloader/src/v1.0.0-rc.1/

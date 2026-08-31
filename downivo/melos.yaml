@@ -1,5 +1,5 @@
 name: downivo
-repository: https://github.com/universaldownloader/universal_downloader
+repository: https://github.com/faisal-wahab-coder/downivo
 
 packages:
   - apps/mobile

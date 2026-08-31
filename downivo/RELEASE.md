@@ -61,17 +61,18 @@ Outputs:
 
 ## CI/CD
 
-- **Remote** — [Bitbucket `app_ideas/downloader`](https://bitbucket.org/app_ideas/downloader)
-- **Pull requests** — `.github/workflows/flutter-ci.yml` runs analyze + test (GitHub; optional on Bitbucket)
-- **Main branch** — also builds release AAB artifact
+- **Pull requests** — `.github/workflows/flutter-ci.yml` runs analyze + test
+- **Main branch** — also builds a debug-signed release AAB artifact (not for Play Store)
 - **Tags `v*`** — `.github/workflows/release.yml` runs full validation and uploads AAB + mapping
 
-Create a release:
+Create a GitHub release after the repository is public:
 
 ```bash
 git tag v1.2.0
 git push origin v1.2.0
 ```
+
+See [`docs/DEVELOPMENT.md`](../docs/DEVELOPMENT.md) and [`docs/PUBLIC_RELEASE_CHECKLIST.md`](../docs/PUBLIC_RELEASE_CHECKLIST.md).
 
 ## Google Play checklist
 
@@ -85,4 +86,4 @@ git push origin v1.2.0
 
 - Monitor crash reports in Play Console
 - Track download success rate and startup metrics (Settings → Performance)
-- File hotfixes on `hotfix/*` branches per `docs/11_Technical_Architecture/11.12_CI_CD.md`
+- File hotfixes on `hotfix/*` branches per `documentation/11_Technical_Architecture/11.12_CI_CD.md`

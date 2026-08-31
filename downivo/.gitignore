@@ -7,7 +7,7 @@ build/
 .idea/
 .vscode/
 
-# Flutter pub
+# Flutter pub — apps/mobile lock is the reproducible app pin
 pubspec.lock
 !apps/mobile/pubspec.lock
 
@@ -17,6 +17,13 @@ pubspec.lock
 **/captures/
 **/*.apk
 **/*.aab
+**/key.properties
+**/*.jks
+**/*.keystore
+
+# Firebase — keep the example; never commit a live google-services.json
+**/google-services.json
+!**/google-services.json.example
 
 # iOS (future)
 **/Pods/
@@ -29,6 +36,7 @@ coverage/
 # Environment
 .env
 .env.*
+!.env.example
 
 # Melos
 .melos_tool/
