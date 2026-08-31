@@ -33,3 +33,35 @@ List<DiscoveredResource> applyPreferredFormats(
       applyPreferredFormat(resource, settings, override: override),
   ];
 }
+
+/// A format whose label/mime actually matches Settings prefs.
+/// Does not fall back to the recommended stream.
+MediaFormat? explicitPreferredFormat(
+  DiscoveredResource resource,
+  AppSettings settings,
+) {
+  final quality = settings.preferredQuality?.trim().toLowerCase();
+  final mime = settings.preferredFormat?.trim().toLowerCase();
+  if ((quality == null || quality.isEmpty) &&
+      (mime == null || mime.isEmpty)) {
+    return null;
+  }
+  if (quality != null && quality.isNotEmpty) {
+    for (final format in resource.formats) {
+      if (!format.label.toLowerCase().contains(quality)) continue;
+      if (mime == null ||
+          mime.isEmpty ||
+          (format.mimeType?.toLowerCase().contains(mime) ?? false)) {
+        return format;
+      }
+    }
+  }
+  if (mime != null && mime.isNotEmpty) {
+    for (final format in resource.formats) {
+      if (format.mimeType?.toLowerCase().contains(mime) ?? false) {
+        return format;
+      }
+    }
+  }
+  return null;
+}

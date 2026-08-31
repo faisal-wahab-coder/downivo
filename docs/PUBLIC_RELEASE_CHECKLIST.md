@@ -38,7 +38,7 @@ Owner checklist before making the repository public. Items in **Security** that 
 - [ ] GitHub Projects (optional)
 - [ ] Topics e.g. `flutter`, `android`, `download-manager`, `dart`
 - [ ] Description: Flutter download manager (Downivo)
-- [ ] Default branch (`main` vs `dev`) documented in the GitHub UI
+- [ ] Default branch is `main`; contributors PR into `dev` only
 
 ## Code
 

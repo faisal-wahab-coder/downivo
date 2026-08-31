@@ -40,5 +40,19 @@ void main() {
 
       expect(headers['User-Agent'], contains('com.google.android.youtube'));
     });
+
+    test('uses desktop Chrome UA for Instagram page and media requests', () {
+      final page = SocialHttpHeaders.forPageFetch(
+        Uri.parse('https://www.instagram.com/reel/DcLtDEhx5pd/'),
+        SocialPlatform.instagram,
+      );
+      final media = SocialHttpHeaders.forMediaDownload(
+        pageUrl: Uri.parse('https://www.instagram.com/reel/DcLtDEhx5pd/'),
+        mediaUrl: 'https://scontent.cdninstagram.com/v/video.mp4',
+        platform: SocialPlatform.instagram,
+      );
+      expect(page['User-Agent'], SocialHttpHeaders.instagramDesktopUserAgent);
+      expect(media['User-Agent'], SocialHttpHeaders.instagramDesktopUserAgent);
+    });
   });
 }

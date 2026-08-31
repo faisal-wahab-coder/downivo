@@ -9,6 +9,7 @@ import '../../providers/analytics_providers.dart';
 import '../../providers/download_providers.dart';
 import '../../providers/settings_provider.dart';
 import 'apply_preferred_format.dart';
+import 'format_picker_sheet.dart';
 import 'media_selection_sheet.dart';
 
 /// Shared enqueue path used by Home, Downloads, and intake.
@@ -45,10 +46,32 @@ Future<void> enqueueUrlFlow(
         preferredQuality: settings.preferredQuality ?? remote.defaultQuality,
       );
       analytics.screen(AnalyticsScreen.resolution);
-      var resources = applyPreferredFormats(
-        await discoverAllResources(ref, url),
+      var resources = await discoverAllResources(ref, url);
+      var picked = formatOverride;
+      if (resources.length == 1 &&
+          picked == null &&
+          resources.first.formats.length > 1 &&
+          context.mounted) {
+        final resource = resources.first;
+        final skipPicker =
+            !TikTokResolver.isWatermarkChoice(resource.formats) &&
+            explicitPreferredFormat(resource, effective) != null;
+        if (!skipPicker) {
+          picked = await FormatPickerSheet.show(
+            context,
+            formats: resource.formats,
+            selectedUrl: resource.directUrl,
+          );
+          if (picked == null || !context.mounted) return;
+          analytics.track(AnalyticsEvent.qualityChanged, {
+            AnalyticsProp.quality: picked.label,
+          });
+        }
+      }
+      resources = applyPreferredFormats(
+        resources,
         effective,
-        override: formatOverride,
+        override: picked,
       );
       if (resources.length > 1 && context.mounted) {
         analytics.screen(AnalyticsScreen.mediaSelection);

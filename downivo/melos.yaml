@@ -43,3 +43,7 @@ scripts:
   format:
     run: melos exec -- dart format .
     description: Format all packages.
+
+  build:apk:
+    run: bash scripts/build_release_apk.sh
+    description: Build an arm64 Android release APK for sideload testing.

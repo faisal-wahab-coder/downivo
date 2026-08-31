@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
 import 'package:download_engine/download_engine.dart';
 import 'package:download_engine/src/content_providers/social_http_headers.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -38,12 +41,12 @@ void main() {
       expect(url, contains('mime_type=video'));
     });
 
-    test('TT-HTML-004 prefers downloadAddr over playAddr', () {
+    test('TT-HTML-004 prefers playAddr (no watermark) over downloadAddr', () {
       const html =
           '{"downloadAddr":"https://v16.tiktokcdn.com/a/download.mp4?token=1",'
           '"playAddr":"https://v16.tiktokcdn.com/a/play.mp4?token=2"}';
       final url = TikTokResolver.extractFromHtmlForTest(html);
-      expect(url, contains('download.mp4'));
+      expect(url, contains('play.mp4'));
     });
   });
 
@@ -275,14 +278,116 @@ void main() {
   // Phase 6 — Video quality (documented limitation)
   // ─────────────────────────────────────────────────────────────────────────
 
-  group('Phase 6 — Video quality', () {
-    test('TT-CAP-001 single stream returned, no quality selection', () {
-      // TikTokResolver picks the first valid URL from downloadAddr/playAddr/playApi
-      // There is no quality list or selection mechanism
+  group('Phase 6 — Watermark / no-watermark formats', () {
+    test('TT-WM-001 exposes both streams when downloadAddr and playAddr differ', () {
+      const html =
+          '{"downloadAddr":"https://v16.tiktokcdn.com/a/download.mp4?token=1",'
+          '"playAddr":"https://v16.tiktokcdn.com/a/play.mp4?token=2"}';
+      final formats = TikTokResolver.extractFormatsFromHtmlForTest(html);
+      expect(formats, hasLength(2));
+      expect(formats.first.label, TikTokResolver.withoutWatermarkLabel);
+      expect(formats.first.url, contains('play.mp4'));
+      expect(formats.first.isRecommended, isTrue);
+      expect(formats.last.label, TikTokResolver.withWatermarkLabel);
+      expect(formats.last.url, contains('download.mp4'));
+      expect(formats.last.isRecommended, isFalse);
+    });
+
+    test('TT-WM-002 defaults to no-watermark playAddr', () {
+      const html =
+          '{"downloadAddr":"https://v16.tiktokcdn.com/a/download.mp4?token=1",'
+          '"playAddr":"https://v16.tiktokcdn.com/a/play.mp4?token=2"}';
+      expect(
+        TikTokResolver.extractFromHtmlForTest(html),
+        contains('play.mp4'),
+      );
+    });
+
+    test('TT-WM-003 single downloadAddr is watermarked only', () {
       const html =
           '{"downloadAddr":"https://v16.tiktokcdn.com/a/video.mp4?token=1"}';
-      final url = TikTokResolver.extractFromHtmlForTest(html);
-      expect(url, isNotNull, reason: 'Single stream extracted — no quality choice');
+      final formats = TikTokResolver.extractFormatsFromHtmlForTest(html);
+      expect(formats, hasLength(1));
+      expect(formats.single.label, TikTokResolver.withWatermarkLabel);
+      expect(formats.single.isRecommended, isTrue);
+    });
+
+    test('TT-WM-004 single playAddr is no-watermark only', () {
+      const html =
+          '{"playAddr":"https://v16.tiktokcdn.com/a/play.mp4?token=2"}';
+      final formats = TikTokResolver.extractFormatsFromHtmlForTest(html);
+      expect(formats, hasLength(1));
+      expect(formats.single.label, TikTokResolver.withoutWatermarkLabel);
+    });
+
+    test('TT-WM-005 identical URLs collapse to one format', () {
+      const html =
+          '{"downloadAddr":"https://v16.tiktokcdn.com/a/video.mp4?token=1",'
+          '"playAddr":"https://v16.tiktokcdn.com/a/video.mp4?token=1"}';
+      final formats = TikTokResolver.extractFormatsFromHtmlForTest(html);
+      expect(formats, hasLength(1));
+      expect(formats.single.label, TikTokResolver.withoutWatermarkLabel);
+    });
+
+    test('TT-WM-006 playApi is treated as no-watermark when playAddr missing', () {
+      const html =
+          '{"downloadAddr":"https://v16.tiktokcdn.com/a/download.mp4?token=1",'
+          '"playApi":"https://v16-webapp-prime.tiktok.com/video/tos/useast/clip/?mime_type=video_mp4"}';
+      final formats = TikTokResolver.extractFormatsFromHtmlForTest(html);
+      expect(formats, hasLength(2));
+      expect(formats.first.label, TikTokResolver.withoutWatermarkLabel);
+      expect(formats.first.url, contains('mime_type=video'));
+      expect(formats.last.label, TikTokResolver.withWatermarkLabel);
+    });
+
+    test('TT-WM-007 discoverAll attaches both formats to the resource', () async {
+      final dio = Dio()..httpClientAdapter = _TikTokHtmlAdapter(
+        '{"downloadAddr":"https://v16.tiktokcdn.com/a/download.mp4?token=1",'
+        '"playAddr":"https://v16.tiktokcdn.com/a/play.mp4?token=2"}',
+      );
+      final results = await TikTokResolver(dio: dio).discoverAll(
+        Uri.parse('https://www.tiktok.com/@user/video/7643276616088440071'),
+      );
+      expect(results, hasLength(1));
+      expect(results.single.directUrl, contains('play.mp4'));
+      expect(results.single.formats, hasLength(2));
+      expect(
+        results.single.formats.map((f) => f.label),
+        [
+          TikTokResolver.withoutWatermarkLabel,
+          TikTokResolver.withWatermarkLabel,
+        ],
+      );
+      expect(results.single.recommendedFormat?.url, contains('play.mp4'));
+    });
+
+    test('TT-WM-008 extracts downloadAddr from UrlList object', () {
+      const html =
+          '{"downloadAddr":{"UrlList":["https://v16.tiktokcdn.com/a/download.mp4?token=1"]},'
+          '"playAddr":"https://v16.tiktokcdn.com/a/play.mp4?token=2"}';
+      final formats = TikTokResolver.extractFormatsFromHtmlForTest(html);
+      expect(formats, hasLength(2));
+      expect(formats.first.url, contains('play.mp4'));
+      expect(formats.last.url, contains('download.mp4'));
+    });
+
+    test('TT-WM-009 extracts PlayAddr UrlList as no-watermark', () {
+      const html =
+          '{"DownloadAddr":{"UrlList":["https://v16.tiktokcdn.com/a/download.mp4?t=1"]},'
+          '"PlayAddr":{"UrlList":["https://v16.tiktokcdn.com/video/tos/clip.mp4?t=2"]}}';
+      final formats = TikTokResolver.extractFormatsFromHtmlForTest(html);
+      expect(formats, hasLength(2));
+      expect(formats.first.label, TikTokResolver.withoutWatermarkLabel);
+      expect(formats.first.url, contains('/video/tos/'));
+      expect(formats.last.label, TikTokResolver.withWatermarkLabel);
+    });
+
+    test('TT-WM-010 isWatermarkChoice is true for the pair', () {
+      const html =
+          '{"downloadAddr":"https://v16.tiktokcdn.com/a/download.mp4?token=1",'
+          '"playAddr":"https://v16.tiktokcdn.com/a/play.mp4?token=2"}';
+      final formats = TikTokResolver.extractFormatsFromHtmlForTest(html);
+      expect(TikTokResolver.isWatermarkChoice(formats), isTrue);
     });
   });
 
@@ -447,4 +552,28 @@ void main() {
       expect(uri.host, contains('tiktokv.com'));
     });
   });
+}
+
+class _TikTokHtmlAdapter implements HttpClientAdapter {
+  _TikTokHtmlAdapter(this.html);
+
+  final String html;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    return ResponseBody.fromString(
+      html,
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['text/html; charset=utf-8'],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
 }

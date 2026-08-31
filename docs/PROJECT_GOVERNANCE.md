@@ -11,10 +11,12 @@ Lightweight process so the project stays reviewable without a bureaucracy layer.
 
 ## Pull request review
 
+- Contributors open PRs against **`dev` only**. Direct pushes to `dev` and `main` are blocked.
 - At least one maintainer review before merge when more than one person has access.
 - Solo-maintainer repos may self-merge after CI is green; still wait for CI.
 - Checks: `scripts/ci.sh` (GitHub Actions), no secrets, architecture boundaries, tests for logic changes.
 - Drive-by reformats of unrelated files should be asked to revert.
+- Releases: maintainer PR from `dev` into `main`, then tag.
 
 ## Issues
 

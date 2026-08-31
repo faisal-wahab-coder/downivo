@@ -43,7 +43,21 @@ Complete the manual checklist in [`QA_CHECKLIST.md`](QA_CHECKLIST.md) on a physi
 
 ## Build commands
 
-From `downivo/apps/mobile`:
+Sideload / internal testing APK (arm64 phones) from `downivo/`:
+
+```bash
+bash scripts/build_release_apk.sh
+```
+
+From the repository root:
+
+```bash
+bash downivo/scripts/build_release_apk.sh --open
+```
+
+`--fat` builds all ABIs. `--aab` also builds a Play Store bundle. `--open` reveals the APK in Finder.
+
+From `downivo/apps/mobile` directly:
 
 ```bash
 # Android App Bundle (Play Store)

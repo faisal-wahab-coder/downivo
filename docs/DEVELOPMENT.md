@@ -127,6 +127,14 @@ There is no `dart format` CI gate yet.
 
 ## Building
 
+Sideload APK for a phone (from `downivo/`):
+
+```bash
+bash scripts/build_release_apk.sh --open
+```
+
+Or `melos run build:apk`. `--fat` builds all ABIs; `--aab` also builds a Play bundle.
+
 From `downivo/apps/mobile`:
 
 ```bash

@@ -172,7 +172,7 @@ class SocialUrlUtils {
       '${uri.scheme}://$host${uri.path.isEmpty ? '' : uri.path}';
 
   static Uri? _instagramEmbedUri(Uri uri) {
-    final reel = RegExp(r'/reel/([^/]+)').firstMatch(uri.path);
+    final reel = RegExp(r'/reels?/([^/]+)').firstMatch(uri.path);
     if (reel != null) {
       return Uri.parse(
         'https://www.instagram.com/reel/${reel.group(1)}/embed/',

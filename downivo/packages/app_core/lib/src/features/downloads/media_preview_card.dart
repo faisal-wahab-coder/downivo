@@ -11,6 +11,7 @@ class MediaPreviewCard extends StatelessWidget {
     this.selectedFormat,
     this.onDownload,
     this.onMoreOptions,
+    this.onFormatSelected,
   });
 
   final DiscoveredResource resource;
@@ -18,16 +19,18 @@ class MediaPreviewCard extends StatelessWidget {
   final MediaFormat? selectedFormat;
   final VoidCallback? onDownload;
   final VoidCallback? onMoreOptions;
+  final ValueChanged<MediaFormat>? onFormatSelected;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final format = selectedFormat ?? resource.recommendedFormat;
+    final watermarkChoice = TikTokResolver.isWatermarkChoice(resource.formats);
     final bits = <String>[
       resource.resolvedKind.label,
       if (resource.author != null && resource.author!.trim().isNotEmpty)
         resource.author!,
-      if (format?.label != null) format!.label,
+      if (format?.label != null && !watermarkChoice) format!.label,
       if (resource.durationSeconds != null)
         _formatDuration(resource.durationSeconds!),
       if (format?.sizeBytes != null)
@@ -77,11 +80,21 @@ class MediaPreviewCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (watermarkChoice && onFormatSelected != null) ...[
+              const SizedBox(height: UdmSpacing.md),
+              Text('Watermark', style: theme.textTheme.titleSmall),
+              const SizedBox(height: UdmSpacing.sm),
+              _WatermarkToggle(
+                formats: resource.formats,
+                selected: format,
+                onSelected: onFormatSelected!,
+              ),
+            ],
             if (onDownload != null || onMoreOptions != null) ...[
               const SizedBox(height: UdmSpacing.md),
               Row(
                 children: [
-                  if (onMoreOptions != null)
+                  if (onMoreOptions != null && !watermarkChoice)
                     TextButton(
                       onPressed: onMoreOptions,
                       child: const Text('More options'),
@@ -106,6 +119,55 @@ class MediaPreviewCard extends StatelessWidget {
     final m = total ~/ 60;
     final s = total % 60;
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+}
+
+class _WatermarkToggle extends StatelessWidget {
+  const _WatermarkToggle({
+    required this.formats,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final List<MediaFormat> formats;
+  final MediaFormat? selected;
+  final ValueChanged<MediaFormat> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final without = formats.firstWhere(
+      (format) => format.label == TikTokResolver.withoutWatermarkLabel,
+    );
+    final withMark = formats.firstWhere(
+      (format) => format.label == TikTokResolver.withWatermarkLabel,
+    );
+    final currentUrl =
+        selected?.url == withMark.url ? withMark.url : without.url;
+    return SizedBox(
+      width: double.infinity,
+      child: SegmentedButton<String>(
+        showSelectedIcon: false,
+        segments: [
+          ButtonSegment(
+            value: without.url,
+            label: const Text('Without'),
+            tooltip: TikTokResolver.withoutWatermarkLabel,
+          ),
+          ButtonSegment(
+            value: withMark.url,
+            label: const Text('With'),
+            tooltip: TikTokResolver.withWatermarkLabel,
+          ),
+        ],
+        selected: {currentUrl},
+        onSelectionChanged: (values) {
+          final url = values.first;
+          onSelected(
+            formats.firstWhere((format) => format.url == url),
+          );
+        },
+      ),
+    );
   }
 }
 

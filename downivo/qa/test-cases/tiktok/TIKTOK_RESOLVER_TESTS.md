@@ -15,13 +15,13 @@ flutter test test/tiktok_resolver_test.dart
 
 | Group | Tests | Coverage |
 |-------|-------|----------|
-| Phase 4 — TikTok downloadAddr extraction | 4 | downloadAddr, playAddr, playApi, priority |
+| Phase 4 — TikTok downloadAddr extraction | 4 | downloadAddr, playAddr, playApi, no-watermark preferred |
 | Phase 4 — TikTok script tag extraction | 2 | __UNIVERSAL_DATA_FOR_REHYDRATION__, SIGI_STATE |
 | Phase 4 — TikTok unicode escape handling | 2 | \u002F, \u0026 decoding |
 | Phase 4 — TikTok CDN URL validation | 8 | webarch rejection, /video/tos/, mime_type, tiktokcdn+mp4, empty/missing |
 | Phase 4 — Metadata extraction | 5 | og:title, platform label, filename, copyWith |
 | Phase 4 — Metadata gaps | 4 | Documented: no thumbnail, duration, width/height, content type |
-| Phase 6 — Video quality | 1 | Single stream documented |
+| Phase 6 — Watermark / no-watermark formats | 10 | playAddr vs downloadAddr, UrlList, picker labels, discoverAll |
 | Phase 7 — Audio | 1 | No audio-only documented |
 | Phase 8 — Audio+Video muxing | 1 | Not applicable documented |
 | Phase 14 — HTTP headers | 3 | TikTok origin/referer, UA selection |

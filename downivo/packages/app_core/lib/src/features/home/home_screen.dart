@@ -112,6 +112,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       setState(() {
         _resources = resources;
         _resolving = false;
+        _selectedFormat = resources.isEmpty
+            ? null
+            : resources.first.recommendedFormat ??
+                  (resources.first.formats.isEmpty
+                      ? null
+                      : resources.first.formats.first);
         if (resources.isEmpty) {
           final uri = Uri.tryParse(url);
           if (uri != null &&
@@ -137,6 +143,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       setState(() {
         _resolving = false;
         _resources = const [];
+        _selectedFormat = null;
         _errorText = DownloadErrorFormatter.fromObject(error);
       });
     }
@@ -211,7 +218,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       onPaste: _paste,
       onSubmitted: _submit,
       onDownloadPreview: () => _submit(),
-      onMoreOptions: preview != null && preview.formats.length > 1
+      onFormatSelected: preview != null && preview.formats.length > 1
+          ? (picked) {
+              setState(() => _selectedFormat = picked);
+              ref.read(analyticsServiceProvider).track(
+                AnalyticsEvent.qualityChanged,
+                {AnalyticsProp.quality: picked.label},
+              );
+              ref.read(analyticsServiceProvider).track(
+                AnalyticsEvent.formatChanged,
+                {AnalyticsProp.format: picked.mimeType},
+              );
+            }
+          : null,
+      onMoreOptions: preview != null &&
+              preview.formats.length > 1 &&
+              !TikTokResolver.isWatermarkChoice(preview.formats)
           ? () async {
               final picked = await FormatPickerSheet.show(
                 context,
@@ -403,6 +425,7 @@ class _UrlHero extends StatelessWidget {
     required this.onSubmitted,
     required this.onDownloadPreview,
     required this.onMoreOptions,
+    required this.onFormatSelected,
     required this.onScanQr,
     required this.onClipboard,
     required this.onBrowser,
@@ -424,6 +447,7 @@ class _UrlHero extends StatelessWidget {
   final ValueChanged<String> onSubmitted;
   final VoidCallback onDownloadPreview;
   final VoidCallback? onMoreOptions;
+  final ValueChanged<MediaFormat>? onFormatSelected;
   final VoidCallback? onScanQr;
   final VoidCallback onClipboard;
   final VoidCallback onBrowser;
@@ -504,6 +528,7 @@ class _UrlHero extends StatelessWidget {
             selectedFormat: selectedFormat,
             onDownload: onDownloadPreview,
             onMoreOptions: onMoreOptions,
+            onFormatSelected: onFormatSelected,
           ),
         ],
       ],

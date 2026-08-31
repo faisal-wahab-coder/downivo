@@ -152,7 +152,7 @@ Copy [`.env.example`](.env.example) for optional analytics and signing notes. Do
 5. `flutter run`
 6. Tests: from `downivo/`, `bash scripts/ci.sh` (pub get, analyze, test)
 7. Format: `melos run format` from `downivo/` (requires Melos)
-8. Release build: `flutter build apk --release` or `flutter build appbundle --release` from `apps/mobile`
+8. Release APK for testing: `bash downivo/scripts/build_release_apk.sh --open`
 
 Full setup, debugging, and troubleshooting: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
@@ -167,6 +167,7 @@ Full setup, debugging, and troubleshooting: [docs/DEVELOPMENT.md](docs/DEVELOPME
 │   ├── apps/web/           # Flutter Web app
 │   ├── packages/           # Feature and infrastructure packages
 │   ├── scripts/ci.sh       # Analyze + test
+│   ├── scripts/build_release_apk.sh  # Sideload Android release APK
 │   └── qa/                 # Manual QA cases and local fixture server
 └── .github/                # CI, issue and pull request templates
 ```
