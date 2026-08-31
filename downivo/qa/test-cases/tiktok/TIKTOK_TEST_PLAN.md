@@ -50,7 +50,7 @@ TikTokResolver.discover(pageUrl)
   ├── SocialUrlResolver.resolveRedirects()   # short link resolution
   ├── TikTokUri.videoIdFromUri()             # video ID extraction
   ├── Fetch HTML from up to 3 target URLs
-  ├── _extractVideoUrl(html)                 # JSON fields + regex
+  ├── _extractVideoStreams(html)             # playAddr / downloadAddr + formats
   ├── _metaTitle(html)                       # og:title
   └── MediaExtractor.buildFileNameForSocial()
   ↓ (if null)
@@ -67,7 +67,7 @@ SocialUrlUtils.fetchTargets() + MediaExtractor.extract()   # generic fallback
 | TikTok resolver | `tiktok_resolver.dart` | `TikTokResolver.discover()` — fetches page HTML, extracts CDN URL |
 | Fetch targets | `social_url_utils.dart` | `SocialUrlUtils._tiktokTargets()` — original + mobile + generic |
 | HTTP headers | `social_http_headers.dart` | TikTok Origin/Referer for page fetch and CDN download |
-| HTML extraction | `tiktok_resolver.dart` | `_extractVideoUrl()` — downloadAddr, playAddr, playApi, SIGI_STATE, regex |
+| HTML extraction | `tiktok_resolver.dart` | `_extractVideoStreams()` — downloadAddr (watermark), playAddr/playApi (no watermark), SIGI_STATE, regex |
 | URL validation | `tiktok_resolver.dart` | `_isVideoPlaybackUrl()` — rejects static assets, accepts CDN video |
 | Generic fallback | `media_extractor.dart` | `_extractTikTokVideo()` — same script IDs + CDN regex |
 | File naming | `media_extractor.dart` | `buildFileNameForSocial()` — CDN basename, og:title slug, or video ID |
@@ -78,7 +78,8 @@ SocialUrlUtils.fetchTargets() + MediaExtractor.extract()   # generic fallback
 | Feature | Status |
 |---------|--------|
 | Photo/carousel posts | NOT SUPPORTED — resolver extracts video only |
-| Quality selection | NOT SUPPORTED — single best stream returned |
+| Watermark choice | SUPPORTED — `formats` exposes With / Without watermark when both URLs exist |
+| Quality selection (resolution) | NOT SUPPORTED — no 1080p/720p ladder; watermark variants only |
 | Audio-only download | NOT SUPPORTED — no audio extraction |
 | Audio+Video muxing | NOT SUPPORTED — no ffmpeg integration |
 | Thumbnail extraction | NOT SUPPORTED — not in DiscoveredResource |
@@ -171,6 +172,8 @@ Verifies:
 
 Verifies:
 - `TikTokResolver.extractFromHtmlForTest()` extracts from downloadAddr, playAddr, playApi
+- Default URL prefers playAddr (no watermark) over downloadAddr (watermarked)
+- `extractFormatsFromHtmlForTest()` exposes both streams when they differ
 - og:title extraction from page HTML
 - Platform label is "TikTok"
 - fileName ends with `.mp4`
@@ -182,15 +185,14 @@ Verifies:
 - No duration extraction
 - No width/height extraction
 - No description extraction
-- No available formats list
 
 ### Phase 5 — Download Resolution (Live Only)
 
 Gated by `TIKTOK_LIVE_TEST=1`. Verifies each URL resolves to a non-null `DiscoveredResource` with non-empty `directUrl`, `fileName`, and `platform`.
 
-### Phase 6 — Video Quality (Not Supported)
+### Phase 6 — Watermark / no-watermark (Supported)
 
-**Finding:** `TikTokResolver` selects a single stream from downloadAddr/playAddr/playApi. There is no quality selection UI or API. The user cannot choose between qualities.
+**Finding:** `TikTokResolver` extracts `playAddr`/`playApi` as **Without watermark** and `downloadAddr` as **With watermark**. Both are exposed on `DiscoveredResource.formats` when the URLs differ. The default / recommended stream is no-watermark. The existing Home `FormatPickerSheet` shows the choice when `formats.length > 1`. If only one URL is present, the picker is hidden.
 
 ### Phase 7 — Audio (Not Supported)
 
@@ -323,8 +325,8 @@ Verifies that `/player/v1/{id}` URLs are correctly detected as TikTok platform b
 4. Display metadata (title if available)
 5. Display thumbnail (NOT IMPLEMENTED)
 6. Display duration (NOT IMPLEMENTED)
-7. Display available quality (NOT IMPLEMENTED — single stream)
-8. Select quality (N/A)
+7. Display watermark / no-watermark options when both streams exist (`FormatPickerSheet`)
+8. Select format (default: Without watermark)
 9. Start download
 10. Observe progress
 11. Pause

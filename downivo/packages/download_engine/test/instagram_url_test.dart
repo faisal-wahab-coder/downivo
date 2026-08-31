@@ -135,6 +135,25 @@ void main() {
       expect(InstagramGraphqlResolver.shortcodeFromUri(uri), 'XYZ789');
     });
 
+    test('IG-SC-013 share URL with igsi query still extracts shortcode', () {
+      final uri = Uri.parse(
+        'https://www.instagram.com/reel/DcLtDEhx5pd/?igsi=MXdlZHZ5bWh3a3NuYg==',
+      );
+      expect(InstagramGraphqlResolver.shortcodeFromUri(uri), 'DcLtDEhx5pd');
+    });
+
+    test('IG-SC-014 /reels/ plural path extracts shortcode', () {
+      final uri = Uri.parse('https://www.instagram.com/reels/DcLtDEhx5pd/');
+      expect(InstagramGraphqlResolver.shortcodeFromUri(uri), 'DcLtDEhx5pd');
+    });
+
+    test('IG-SC-015 carousel share URL with img_index and igsi', () {
+      final uri = Uri.parse(
+        'https://www.instagram.com/p/Dck28qujwLv/?img_index=2&igsi=aXdwZDlwaTZwd3J3',
+      );
+      expect(InstagramGraphqlResolver.shortcodeFromUri(uri), 'Dck28qujwLv');
+    });
+
     test('IG-SC-009 profile URL returns null shortcode', () {
       final uri = Uri.parse('https://www.instagram.com/instagram/');
       expect(InstagramGraphqlResolver.shortcodeFromUri(uri), isNull);
@@ -248,6 +267,15 @@ void main() {
 
       expect(can1, can2);
       expect(can2, can3);
+    });
+
+    test('IG-NORM-008 /reels/ canonicalizes to /reel/', () {
+      final uri = Uri.parse('https://www.instagram.com/reels/DcLtDEhx5pd/');
+      final canonical = InstagramGraphqlResolver.canonicalPageUrl(
+        uri,
+        'DcLtDEhx5pd',
+      );
+      expect(canonical.path, '/reel/DcLtDEhx5pd/');
     });
 
     test('IG-NORM-004 canonical always uses www.instagram.com host', () {

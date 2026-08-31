@@ -7,14 +7,20 @@ import 'social_http_headers.dart';
 import 'social_platform.dart';
 import 'media_extractor.dart';
 
-/// Resolves public Instagram posts/reels via the same GraphQL endpoint as the web app.
+/// Resolves public Instagram posts/reels via the logged-out web GraphQL API.
 class InstagramGraphqlResolver {
   InstagramGraphqlResolver({Dio? dio}) : _dio = dio ?? Dio();
 
   final Dio _dio;
 
   static const _appId = '936619743392459';
-  static const _docId = '24368985919464652';
+  static const _asbdId = '359341';
+  static const _docId = '27130156389949648';
+  static const _friendlyName = 'PolarisLoggedOutDesktopWWWPostRootContentQuery';
+  static const _graphqlUrl = 'https://www.instagram.com/api/graphql';
+  static const _homeUrl = 'https://www.instagram.com/';
+  static const _shortcodeAlphabet =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 
   Future<DiscoveredResource?> discover(Uri pageUrl) async {
     final all = await discoverAll(pageUrl);
@@ -28,31 +34,71 @@ class InstagramGraphqlResolver {
     final shortcode = shortcodeFromUri(pageUrl);
     if (shortcode == null) return const [];
 
+    final mediaId = mediaIdFromShortcode(shortcode);
+    if (mediaId == null) return const [];
+
     final canonical = canonicalPageUrl(pageUrl, shortcode);
-    final session = await _loadSession(canonical);
-    if (session == null) return const [];
-
-    final payload = await _queryGraphql(
+    final session = await _loadSession(
       pageUrl: canonical,
-      shortcode: shortcode,
-      session: session,
+      mediaId: mediaId,
     );
-    if (payload == null) return const [];
 
-    return _parseAllMedia(pageUrl: pageUrl, shortcode: shortcode, payload: payload);
+    if (session != null) {
+      final payload = await _queryGraphql(
+        pageUrl: canonical,
+        mediaId: mediaId,
+        session: session,
+      );
+      if (payload != null) {
+        final parsed = _parseAllMedia(
+          pageUrl: pageUrl,
+          shortcode: shortcode,
+          payload: payload,
+        );
+        if (_usableResources(parsed, pageUrl)) return parsed;
+      }
+    }
+
+    final html = await _fetchHtml(canonical);
+    if (html == null || html.isEmpty) return const [];
+    final fromHtml = _parsePrefetchedMedia(
+      pageUrl: pageUrl,
+      shortcode: shortcode,
+      html: html,
+    );
+    if (_usableResources(fromHtml, pageUrl)) return fromHtml;
+    return const [];
   }
 
   static Uri canonicalPageUrl(Uri pageUrl, String shortcode) {
-    final kind =
-        RegExp(r'/(reel|p|tv)/').firstMatch(pageUrl.path)?.group(1) ?? 'reel';
+    final raw =
+        RegExp(r'/(reels?|p|tv)/').firstMatch(pageUrl.path)?.group(1) ?? 'reel';
+    final kind = raw == 'reels' ? 'reel' : raw;
     return Uri.parse('https://www.instagram.com/$kind/$shortcode/');
   }
 
   static String? shortcodeFromUri(Uri uri) {
-    final match = RegExp(r'/(reel|p|tv)/([^/?#]+)').firstMatch(uri.path);
+    final match = RegExp(r'/(reels?|p|tv)/([^/?#]+)').firstMatch(uri.path);
     final code = match?.group(2);
     if (code == null || code.isEmpty) return null;
     return code;
+  }
+
+  /// Converts an Instagram shortcode to the numeric media id GraphQL expects.
+  static String? mediaIdFromShortcode(String shortcode) {
+    var code = shortcode;
+    if (code.length > 28) {
+      code = code.substring(0, code.length - 28);
+    }
+    if (code.isEmpty) return null;
+    var value = BigInt.zero;
+    final base = BigInt.from(64);
+    for (var i = 0; i < code.length; i++) {
+      final digit = _shortcodeAlphabet.indexOf(code[i]);
+      if (digit < 0) return null;
+      value = value * base + BigInt.from(digit);
+    }
+    return value.toString();
   }
 
   /// Classifies an Instagram URL by content type.
@@ -61,7 +107,8 @@ class InstagramGraphqlResolver {
     if (RegExp(r'^/stories/[^/]+').hasMatch(path)) {
       return InstagramContentType.story;
     }
-    if (RegExp(r'^/(reel|p|tv)/[^/?#]+').hasMatch(path)) {
+    if (RegExp(r'^/(reels?|p|tv)/[^/?#]+').hasMatch(path) ||
+        RegExp(r'^/[^/]+/(reels?|p|tv)/[^/?#]+').hasMatch(path)) {
       return InstagramContentType.post;
     }
     if (RegExp(r'^/[a-zA-Z0-9._]+/?$').hasMatch(path) && path != '/') {
@@ -93,37 +140,74 @@ class InstagramGraphqlResolver {
     );
   }
 
-  Future<_InstagramSession?> _loadSession(Uri pageUrl) async {
+  Future<_InstagramSession?> _loadSession({
+    required Uri pageUrl,
+    required String mediaId,
+  }) async {
     try {
-      final response = await _dio.get<String>(
-        pageUrl.toString(),
+      final cookies = <String, String>{};
+      String? csrf;
+      String? lsd;
+
+      final home = await _dio.get<String>(
+        _homeUrl,
         options: Options(
           responseType: ResponseType.plain,
           followRedirects: true,
-          validateStatus: (status) => status != null && status >= 200 && status < 400,
+          validateStatus: (status) =>
+              status != null && status >= 200 && status < 400,
           headers: SocialHttpHeaders.forPageFetch(
-            pageUrl,
+            Uri.parse(_homeUrl),
             SocialPlatform.instagram,
           ),
         ),
       );
+      cookies.addAll(_cookiesFromHeaders(home.headers.map));
+      final homeHtml = home.data ?? '';
+      csrf = cookies['csrftoken'] ?? _csrfFromHtml(homeHtml);
+      lsd = _lsdFromHtml(homeHtml);
 
-      final html = response.data;
-      if (html == null || html.isEmpty) return null;
+      try {
+        final ruling = await _dio.get<String>(
+          'https://www.instagram.com/api/v1/web/get_ruling_for_content/',
+          queryParameters: {
+            'content_type': 'MEDIA',
+            'target_id': mediaId,
+          },
+          options: Options(
+            responseType: ResponseType.plain,
+            followRedirects: true,
+            validateStatus: (status) =>
+                status != null && status >= 200 && status < 500,
+            headers: _apiHeaders(
+              pageUrl: pageUrl,
+              csrf: csrf,
+              lsd: lsd,
+              cookie: _cookieHeader(cookies),
+            ),
+          ),
+        );
+        cookies.addAll(_cookiesFromHeaders(ruling.headers.map));
+        csrf = cookies['csrftoken'] ?? csrf;
+      } on DioException {
+        // Ruling is best-effort; GraphQL can still succeed with homepage tokens.
+      }
 
-      final cookies = _cookiesFromHeaders(response.headers.map);
-      final csrf = cookies['csrftoken'] ?? _firstMatch(html, [
-            RegExp(r'"csrf_token":"([^"]+)"'),
-            RegExp(r'"csrf_token"\s*:\s*"([^"]+)"'),
-          ]);
-      final lsd = _firstMatch(html, [
-        RegExp(r'"LSD",\[\],\{"token":"([^"]+)"'),
-        RegExp(r'"lsd":"([^"]+)"'),
-      ]);
+      if (lsd == null && csrf == null && cookies.isEmpty) {
+        final pageHtml = await _fetchHtml(pageUrl);
+        if (pageHtml == null || pageHtml.isEmpty) return null;
+        csrf = _csrfFromHtml(pageHtml);
+        lsd = _lsdFromHtml(pageHtml);
+        if (csrf == null && lsd == null) return null;
+      }
 
       if (csrf == null && lsd == null && cookies.isEmpty) return null;
 
-      return _InstagramSession(cookies: cookies, csrfToken: csrf, lsdToken: lsd);
+      return _InstagramSession(
+        cookies: cookies,
+        csrfToken: csrf,
+        lsdToken: lsd,
+      );
     } on DioException {
       return null;
     }
@@ -131,36 +215,56 @@ class InstagramGraphqlResolver {
 
   Future<Map<String, dynamic>?> _queryGraphql({
     required Uri pageUrl,
-    required String shortcode,
+    required String mediaId,
     required _InstagramSession session,
   }) async {
     try {
-      final variables = jsonEncode({'shortcode': shortcode});
       final headers = {
-        ...SocialHttpHeaders.forPageFetch(pageUrl, SocialPlatform.instagram),
+        ..._apiHeaders(
+          pageUrl: pageUrl,
+          csrf: session.csrfToken,
+          lsd: session.lsdToken,
+          cookie: session.cookieHeader,
+        ),
         'Content-Type': 'application/x-www-form-urlencoded',
-        'X-IG-App-ID': _appId,
-        'X-Requested-With': 'XMLHttpRequest',
-        'Accept': '*/*',
-        if (session.csrfToken != null) 'X-CSRFToken': session.csrfToken!,
-        if (session.lsdToken != null) 'X-FB-LSD': session.lsdToken!,
-        if (session.cookies.isNotEmpty)
-          'Cookie': session.cookieHeader,
+        'X-FB-Friendly-Name': _friendlyName,
       };
 
-      final response = await _dio.post<Map<String, dynamic>>(
-        'https://www.instagram.com/graphql/query/',
-        data: {'variables': variables, 'doc_id': _docId},
-        options: Options(
-          contentType: Headers.formUrlEncodedContentType,
-          responseType: ResponseType.json,
-          followRedirects: true,
-          validateStatus: (status) => status != null && status >= 200 && status < 400,
-          headers: headers,
-        ),
-      );
+      final body = <String, String>{
+        'fb_api_caller_class': 'RelayModern',
+        'fb_api_req_friendly_name': _friendlyName,
+        'server_timestamps': 'true',
+        'variables': jsonEncode({'media_id': mediaId}),
+        'doc_id': _docId,
+        if (session.lsdToken != null) 'lsd': session.lsdToken!,
+      };
 
-      return response.data;
+      final endpoints = [
+        _graphqlUrl,
+        'https://www.instagram.com/graphql/query/',
+      ];
+
+      for (final endpoint in endpoints) {
+        try {
+          final response = await _dio.post<dynamic>(
+            endpoint,
+            data: body,
+            options: Options(
+              contentType: Headers.formUrlEncodedContentType,
+              responseType: ResponseType.plain,
+              followRedirects: true,
+              validateStatus: (status) =>
+                  status != null && status >= 200 && status < 400,
+              headers: headers,
+            ),
+          );
+          final parsed = _decodeJsonMap(response.data);
+          if (parsed != null) return parsed;
+        } on DioException {
+          continue;
+        }
+      }
+      return null;
     } on DioException {
       return null;
     }
@@ -174,9 +278,19 @@ class InstagramGraphqlResolver {
     final data = payload['data'];
     if (data is! Map<String, dynamic>) return const [];
 
+    final polaris = _polarisProductMedia(data['xig_polaris_media']);
+    if (polaris != null) {
+      return _resourcesFromItem(
+        pageUrl: pageUrl,
+        shortcode: shortcode,
+        item: polaris,
+      );
+    }
+
     final webInfo = data['xdt_api__v1__media__shortcode__web_info'];
     if (webInfo is! Map<String, dynamic>) {
-      final legacy = _parseLegacyShortcodeMedia(pageUrl, data['xdt_shortcode_media']);
+      final legacy =
+          _parseLegacyShortcodeMedia(pageUrl, data['xdt_shortcode_media']);
       return legacy != null ? [legacy] : const [];
     }
 
@@ -186,9 +300,19 @@ class InstagramGraphqlResolver {
     final item = items.first;
     if (item is! Map<String, dynamic>) return const [];
 
-    final caption = _captionText(item['caption']);
+    return _resourcesFromItem(
+      pageUrl: pageUrl,
+      shortcode: shortcode,
+      item: item,
+    );
+  }
 
-    // Carousel: extract all media items.
+  List<DiscoveredResource> _resourcesFromItem({
+    required Uri pageUrl,
+    required String shortcode,
+    required Map<String, dynamic> item,
+  }) {
+    final caption = _captionText(item['caption']);
     final carouselMedia = item['carousel_media'];
     if (carouselMedia is List && carouselMedia.isNotEmpty) {
       return _parseAllCarouselMedia(
@@ -199,7 +323,6 @@ class InstagramGraphqlResolver {
       );
     }
 
-    // Single item: try video then image.
     final single = _extractSingleResource(
       item: item,
       pageUrl: pageUrl,
@@ -208,6 +331,20 @@ class InstagramGraphqlResolver {
       index: null,
     );
     return single != null ? [single] : const [];
+  }
+
+  List<DiscoveredResource> _parsePrefetchedMedia({
+    required Uri pageUrl,
+    required String shortcode,
+    required String html,
+  }) {
+    final product = _polarisMediaFromHtml(html);
+    if (product == null) return const [];
+    return _resourcesFromItem(
+      pageUrl: pageUrl,
+      shortcode: shortcode,
+      item: product,
+    );
   }
 
   List<DiscoveredResource> _parseAllCarouselMedia({
@@ -266,6 +403,9 @@ class InstagramGraphqlResolver {
       );
     }
 
+    // Reels / IGTV / media_type=2 are videos. Never download the poster JPEG.
+    if (_isVideoItem(item, pageUrl)) return null;
+
     final imageUrl = _bestImageUrl(item);
     if (imageUrl != null) {
       final fileName = MediaExtractor.buildFileNameForSocial(
@@ -289,30 +429,6 @@ class InstagramGraphqlResolver {
     }
 
     return null;
-  }
-
-  DiscoveredResource? _parsePayload({
-    required Uri pageUrl,
-    required String shortcode,
-    required Map<String, dynamic> payload,
-  }) {
-    final all = _parseAllMedia(pageUrl: pageUrl, shortcode: shortcode, payload: payload);
-    return all.isEmpty ? null : all.first;
-  }
-
-  DiscoveredResource? _parseCarouselFirstMedia({
-    required Uri pageUrl,
-    required String shortcode,
-    required List<dynamic> carousel,
-    required String? caption,
-  }) {
-    final all = _parseAllCarouselMedia(
-      pageUrl: pageUrl,
-      shortcode: shortcode,
-      carousel: carousel,
-      caption: caption,
-    );
-    return all.isEmpty ? null : all.first;
   }
 
   DiscoveredResource? _parseLegacyShortcodeMedia(
@@ -344,9 +460,11 @@ class InstagramGraphqlResolver {
       );
     }
 
-    // Fall back to image (display_url or thumbnail_src).
+    // Fall back to image only for photo posts — never for video items.
     final imageUrl = media['display_url'] ?? media['thumbnail_src'];
-    if (imageUrl is String && imageUrl.startsWith('http')) {
+    if (imageUrl is String &&
+        imageUrl.startsWith('http') &&
+        !_isVideoItem(media, pageUrl)) {
       final fileName = MediaExtractor.buildFileNameForSocial(
         pageUrl: pageUrl,
         platform: SocialPlatform.instagram,
@@ -369,28 +487,90 @@ class InstagramGraphqlResolver {
   }
 
   static String? _bestVideoUrl(Map<String, dynamic> item) {
-    final versions = item['video_versions'];
-    if (versions is! List || versions.isEmpty) {
-      final direct = item['video_url'];
-      return direct is String && direct.startsWith('http') ? direct : null;
+    final fromVersions = _bestUrlFromVideoVersions(item['video_versions']);
+    if (fromVersions != null) return fromVersions;
+
+    for (final key in ['video_url', 'playback_url']) {
+      final direct = item[key];
+      if (direct is String && direct.startsWith('http')) return direct;
     }
 
-    Map<String, dynamic>? best;
+    return _videoUrlFromDashManifest(item['video_dash_manifest']);
+  }
+
+  static String? _bestUrlFromVideoVersions(Object? versions) {
+    if (versions is! List || versions.isEmpty) return null;
+
+    String? bestUrl;
     var bestWidth = -1;
     for (final version in versions) {
-      if (version is! Map<String, dynamic>) continue;
-      final url = version['url'];
+      if (version is! Map) continue;
+      final mapped = version is Map<String, dynamic>
+          ? version
+          : version.map((key, value) => MapEntry(key.toString(), value));
+      final url = mapped['url'] ?? mapped['src'];
       if (url is! String || !url.startsWith('http')) continue;
-      final width = version['width'];
-      final parsedWidth = width is int ? width : int.tryParse('$width') ?? 0;
+      final parsedWidth = _asInt(mapped['width']) ?? 0;
       if (parsedWidth >= bestWidth) {
         bestWidth = parsedWidth;
-        best = version;
+        bestUrl = url;
       }
     }
+    return bestUrl;
+  }
 
-    final url = best?['url'];
-    return url is String ? url : null;
+  static String? _videoUrlFromDashManifest(Object? manifest) {
+    if (manifest is! String || manifest.isEmpty) return null;
+    final decoded = manifest
+        .replaceAll('&amp;', '&')
+        .replaceAll(r'\u0026', '&')
+        .replaceAll(r'\/', '/');
+    final mp4 = RegExp(r'https://[^\s"<>\\]+?\.mp4[^\s"<>\\]*')
+        .allMatches(decoded)
+        .map((m) => m.group(0)!)
+        .toList();
+    if (mp4.isNotEmpty) return mp4.first;
+    final hls = RegExp(r'https://[^\s"<>\\]+?\.m3u8[^\s"<>\\]*')
+        .firstMatch(decoded)
+        ?.group(0);
+    return hls;
+  }
+
+  static bool _isVideoPage(Uri pageUrl) =>
+      RegExp(r'/(reels?|tv)/').hasMatch(pageUrl.path);
+
+  static bool _isVideoItem(Map<String, dynamic> item, Uri pageUrl) {
+    if (_isVideoPage(pageUrl)) return true;
+    if (item['is_video'] == true) return true;
+    if (_asInt(item['media_type']) == 2) return true;
+    final productType = item['product_type']?.toString().toLowerCase();
+    if (productType == 'clips' ||
+        productType == 'igtv' ||
+        productType == 'reel') {
+      return true;
+    }
+    if (item['video_dash_manifest'] is String &&
+        (item['video_dash_manifest'] as String).isNotEmpty) {
+      return true;
+    }
+    return false;
+  }
+
+  static bool _usableResources(
+    List<DiscoveredResource> resources,
+    Uri pageUrl,
+  ) {
+    if (resources.isEmpty) return false;
+    if (!_isVideoPage(pageUrl)) return true;
+    return resources.any(_isVideoResource);
+  }
+
+  static bool _isVideoResource(DiscoveredResource resource) {
+    if (resource.kind == DiscoveredResourceKind.video) return true;
+    final mime = resource.mimeType?.toLowerCase() ?? '';
+    if (mime.startsWith('video/')) return true;
+    final url = resource.directUrl.toLowerCase();
+    return url.contains('.mp4') || url.contains('.m3u8');
   }
 
   static String? _bestImageUrl(Map<String, dynamic> item) {
@@ -459,6 +639,160 @@ class InstagramGraphqlResolver {
     final text = node['text'];
     return text is String && text.trim().isNotEmpty ? text.trim() : null;
   }
+
+  Map<String, String> _apiHeaders({
+    required Uri pageUrl,
+    String? csrf,
+    String? lsd,
+    String? cookie,
+  }) {
+    return {
+      'User-Agent': SocialHttpHeaders.instagramDesktopUserAgent,
+      'Accept': '*/*',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Origin': 'https://www.instagram.com',
+      'Referer': pageUrl.toString(),
+      'X-IG-App-ID': _appId,
+      'X-ASBD-ID': _asbdId,
+      'X-IG-WWW-Claim': '0',
+      'X-Requested-With': 'XMLHttpRequest',
+      if (csrf != null) 'X-CSRFToken': csrf,
+      if (lsd != null) 'X-FB-LSD': lsd,
+      if (cookie != null && cookie.isNotEmpty) 'Cookie': cookie,
+    };
+  }
+
+  Future<String?> _fetchHtml(Uri url) async {
+    try {
+      final response = await _dio.get<String>(
+        url.toString(),
+        options: Options(
+          responseType: ResponseType.plain,
+          followRedirects: true,
+          validateStatus: (status) =>
+              status != null && status >= 200 && status < 400,
+          headers: SocialHttpHeaders.forPageFetch(
+            url,
+            SocialPlatform.instagram,
+          ),
+        ),
+      );
+      return response.data;
+    } on DioException {
+      return null;
+    }
+  }
+
+  static Map<String, dynamic>? _decodeJsonMap(Object? raw) {
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is Map) {
+      return raw.map((key, value) => MapEntry(key.toString(), value));
+    }
+    if (raw is! String) return null;
+    final trimmed = raw.trimLeft();
+    if (trimmed.isEmpty || trimmed.startsWith('<')) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) {
+        return decoded.map((key, value) => MapEntry(key.toString(), value));
+      }
+    } on Object {
+      return null;
+    }
+    return null;
+  }
+
+  static String? _csrfFromHtml(String html) {
+    return _firstMatch(html, [
+      RegExp(r'"csrf_token":"([^"]+)"'),
+      RegExp(r'"csrf_token"\s*:\s*"([^"]+)"'),
+    ]);
+  }
+
+  static String? _lsdFromHtml(String html) {
+    final direct = _firstMatch(html, [
+      RegExp(r'"LSD",\[\],\{"token":"([^"]+)"'),
+      RegExp(r'"lsd":"([^"]+)"'),
+    ]);
+    if (direct != null) return direct;
+
+    final eqmc = RegExp(
+      r'<script\b[^>]*\bid=["' "'" r']__eqmc["' "'" r'][^>]*>(.*?)</script>',
+      dotAll: true,
+      caseSensitive: false,
+    ).firstMatch(html)?.group(1);
+    if (eqmc == null) return null;
+    try {
+      final decoded = jsonDecode(eqmc.trim());
+      if (decoded is Map && decoded['l'] is String) {
+        return decoded['l'] as String;
+      }
+    } on Object {
+      return null;
+    }
+    return null;
+  }
+
+  static Map<String, dynamic>? _polarisProductMedia(Object? polaris) {
+    if (polaris is! Map) return null;
+    final mapped = polaris is Map<String, dynamic>
+        ? polaris
+        : polaris.map((key, value) => MapEntry(key.toString(), value));
+    final product = mapped['if_not_gated_logged_out'];
+    if (product is Map<String, dynamic>) return product;
+    if (product is Map) {
+      return product.map((key, value) => MapEntry(key.toString(), value));
+    }
+    if (mapped.containsKey('video_versions') ||
+        mapped.containsKey('image_versions2') ||
+        mapped.containsKey('carousel_media') ||
+        mapped.containsKey('video_url')) {
+      return mapped;
+    }
+    return null;
+  }
+
+  static Map<String, dynamic>? _polarisMediaFromHtml(String html) {
+    if (!html.contains('xig_polaris_media')) return null;
+    final scripts = RegExp(
+      r'<script\b[^>]*>([\s\S]*?)</script>',
+      caseSensitive: false,
+    ).allMatches(html);
+    for (final match in scripts) {
+      final raw = match.group(1)?.trim();
+      if (raw == null || !raw.contains('xig_polaris_media')) continue;
+      try {
+        final decoded = jsonDecode(raw);
+        final found = _findPolarisMedia(decoded);
+        if (found != null) return found;
+      } on Object {
+        continue;
+      }
+    }
+    return null;
+  }
+
+  static Map<String, dynamic>? _findPolarisMedia(Object? node) {
+    if (node is Map) {
+      final mapped = node.map((key, value) => MapEntry(key.toString(), value));
+      final polaris = _polarisProductMedia(mapped['xig_polaris_media']);
+      if (polaris != null) return polaris;
+      for (final value in mapped.values) {
+        final found = _findPolarisMedia(value);
+        if (found != null) return found;
+      }
+    } else if (node is List) {
+      for (final item in node) {
+        final found = _findPolarisMedia(item);
+        if (found != null) return found;
+      }
+    }
+    return null;
+  }
+
+  static String _cookieHeader(Map<String, String> cookies) =>
+      cookies.entries.map((e) => '${e.key}=${e.value}').join('; ');
 
   static Map<String, String> _cookiesFromHeaders(Map<String, List<String>> headers) {
     final cookies = <String, String>{};

@@ -25,7 +25,12 @@ class MediaExtractor {
         platform != SocialPlatform.threads &&
         platform != SocialPlatform.whatsapp &&
         platform != SocialPlatform.soundcloud) {
-      direct ??= _extractOpenGraphVideo(html) ?? _extractOpenGraphImage(html);
+      direct ??= _extractOpenGraphVideo(html);
+      final reelPage = platform == SocialPlatform.instagram &&
+          RegExp(r'/(reels?|tv)/').hasMatch(pageUrl.path);
+      if (!reelPage) {
+        direct ??= _extractOpenGraphImage(html);
+      }
     }
     if (direct == null) return null;
 
@@ -94,9 +99,9 @@ class MediaExtractor {
       SocialPlatform.youtube => _extractYouTubeStream(html),
       SocialPlatform.tiktok => _extractTikTokVideo(html) ??
           _firstJsonString(html, [
-            'downloadAddr',
             'playAddr',
             'playApi',
+            'downloadAddr',
           ]),
       SocialPlatform.instagram => _extractInstagramVideo(html) ??
           _metaContent(html, 'og:video') ??
@@ -132,9 +137,9 @@ class MediaExtractor {
     final universal = _scriptJson(html, '__UNIVERSAL_DATA_FOR_REHYDRATION__');
     if (universal != null) {
       final fromUniversal = _firstJsonString(universal, [
-        'downloadAddr',
         'playAddr',
         'playApi',
+        'downloadAddr',
       ]);
       if (fromUniversal != null) return fromUniversal;
     }
@@ -142,9 +147,9 @@ class MediaExtractor {
     final sigi = _scriptJson(html, 'SIGI_STATE');
     if (sigi != null) {
       final fromSigi = _firstJsonString(sigi, [
-        'downloadAddr',
         'playAddr',
         'playApi',
+        'downloadAddr',
       ]);
       if (fromSigi != null) return fromSigi;
     }

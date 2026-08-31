@@ -80,14 +80,20 @@ class TikTokResolver {
         continue;
       }
 
-      final mediaUrl = _extractVideoUrl(page.html);
+      final streams = _extractVideoStreams(page.html);
+      final mediaUrl = streams.defaultUrl;
       if (mediaUrl == null) {
         _log('TikTok: no video URL extracted from $target');
         continue;
       }
 
-      _log('TikTok: found CDN URL from $target');
+      _log(
+        'TikTok: found CDN URL from $target '
+        '(watermark=${streams.withWatermark != null} '
+        'noWatermark=${streams.withoutWatermark != null})',
+      );
       final title = _metaTitle(page.html);
+      final formats = streams.toFormats();
       return [
         DiscoveredResource(
           directUrl: mediaUrl,
@@ -105,6 +111,7 @@ class TikTokResolver {
           mimeType: 'video/mp4',
           requestHeaders: headers,
           kind: DiscoveredResourceKind.video,
+          formats: formats,
         ),
       ];
     }
@@ -117,8 +124,28 @@ class TikTokResolver {
 
   static String? videoIdFromUri(Uri uri) => TikTokUri.videoIdFromUri(uri);
 
-  /// Extracts a video URL from HTML — exposed for unit tests.
-  static String? extractFromHtmlForTest(String html) => _extractVideoUrl(html);
+  /// Label for the official save stream (burned-in TikTok watermark).
+  static const withWatermarkLabel = 'With watermark';
+
+  /// Label for the in-player stream (typically no burned-in watermark).
+  static const withoutWatermarkLabel = 'Without watermark';
+
+  /// True when [formats] is the TikTok with/without watermark pair.
+  static bool isWatermarkChoice(List<MediaFormat> formats) {
+    if (formats.length != 2) return false;
+    final labels = formats.map((format) => format.label).toSet();
+    return labels.contains(withWatermarkLabel) &&
+        labels.contains(withoutWatermarkLabel);
+  }
+
+  /// Extracts the default video URL from HTML — exposed for unit tests.
+  /// Prefers the no-watermark play stream when both are present.
+  static String? extractFromHtmlForTest(String html) =>
+      _extractVideoStreams(html).defaultUrl;
+
+  /// Extracts watermark / no-watermark formats from HTML — exposed for tests.
+  static List<MediaFormat> extractFormatsFromHtmlForTest(String html) =>
+      _extractVideoStreams(html).toFormats();
 
   /// Extracts photo resources from HTML — exposed for unit tests.
   static List<DiscoveredResource> extractPhotosForTest({
@@ -157,47 +184,99 @@ class TikTokResolver {
     }
   }
 
-  // ─── Video extraction (unchanged) ───────────────────────────────────
+  // ─── Video extraction ───────────────────────────────────────────────
 
-  static String? _extractVideoUrl(String html) {
-    for (final field in ['downloadAddr', 'playAddr', 'playApi']) {
-      final pattern = RegExp(
-        '"$field"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"',
-        caseSensitive: false,
-      );
-      for (final match in pattern.allMatches(html)) {
-        final url = SocialSessionUtils.decodeEmbeddedUrl(match.group(1)!);
-        if (_isVideoPlaybackUrl(url)) return url;
+  static _TikTokVideoStreams _extractVideoStreams(String html) {
+    String? withWatermark;
+    String? playAddr;
+    String? playApi;
+
+    void consider(String field, String url) {
+      if (!_isVideoPlaybackUrl(url)) return;
+      final key = field.toLowerCase().replaceAll('_', '');
+      switch (key) {
+        case 'downloadaddr':
+          withWatermark ??= url;
+        case 'playaddr':
+          playAddr ??= url;
+        case 'playapi':
+          playApi ??= url;
       }
     }
 
+    void scan(String source) {
+      const fields = [
+        'downloadAddr',
+        'DownloadAddr',
+        'download_addr',
+        'playAddr',
+        'PlayAddr',
+        'play_addr',
+        'playApi',
+        'play_api',
+      ];
+      for (final field in fields) {
+        final stringPattern = RegExp(
+          '"$field"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"',
+          caseSensitive: false,
+        );
+        for (final match in stringPattern.allMatches(source)) {
+          consider(
+            field,
+            SocialSessionUtils.decodeEmbeddedUrl(match.group(1)!),
+          );
+        }
+
+        final objectPattern = RegExp(
+          '"$field"\\s*:\\s*\\{',
+          caseSensitive: false,
+        );
+        for (final match in objectPattern.allMatches(source)) {
+          final end = (match.start + 2500).clamp(0, source.length);
+          final window = source.substring(match.start, end);
+          final urlMatch = RegExp(
+            r'"[Uu]rlList"\s*:\s*\[\s*"((?:\\.|[^"\\])*)"',
+            caseSensitive: false,
+          ).firstMatch(window);
+          if (urlMatch != null) {
+            consider(
+              field,
+              SocialSessionUtils.decodeEmbeddedUrl(urlMatch.group(1)!),
+            );
+          }
+        }
+      }
+    }
+
+    scan(html);
     for (final scriptId in [
       '__UNIVERSAL_DATA_FOR_REHYDRATION__',
       'SIGI_STATE',
     ]) {
       final json = _scriptJson(html, scriptId);
-      if (json == null) continue;
-      for (final field in ['downloadAddr', 'playAddr', 'playApi']) {
-        final pattern = RegExp(
-          '"$field"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"',
-          caseSensitive: false,
-        );
-        for (final match in pattern.allMatches(json)) {
-          final url = SocialSessionUtils.decodeEmbeddedUrl(match.group(1)!);
-          if (_isVideoPlaybackUrl(url)) return url;
+      if (json != null) scan(json);
+    }
+
+    String? fallback;
+    if (withWatermark == null && playAddr == null && playApi == null) {
+      final pattern = RegExp(
+        r'https://(?:\\u002F|[^\s"\\])*(?:tiktokcdn|tiktokv|tiktok)\.com(?:\\u0026|\\u002F|[^\s"\\])*',
+        caseSensitive: false,
+      );
+      for (final match in pattern.allMatches(html)) {
+        final url = SocialSessionUtils.decodeEmbeddedUrl(match.group(0)!);
+        if (_isVideoPlaybackUrl(url)) {
+          fallback = url;
+          break;
         }
       }
     }
 
-    final pattern = RegExp(
-      r'https://(?:\\u002F|[^\s"\\])*(?:tiktokcdn|tiktokv|tiktok)\.com(?:\\u0026|\\u002F|[^\s"\\])*',
-      caseSensitive: false,
+    return _TikTokVideoStreams(
+      withoutWatermark: playAddr ?? playApi,
+      withWatermark: withWatermark,
+      fallback: fallback,
     );
-    for (final match in pattern.allMatches(html)) {
-      final url = SocialSessionUtils.decodeEmbeddedUrl(match.group(0)!);
-      if (_isVideoPlaybackUrl(url)) return url;
-    }
-    return null;
   }
 
   static bool _isVideoPlaybackUrl(String url) {
@@ -504,4 +583,51 @@ class _FetchedTikTokPage {
 
   final String html;
   final Map<String, String> cookies;
+}
+
+/// Play vs official-save streams extracted from a TikTok page.
+class _TikTokVideoStreams {
+  const _TikTokVideoStreams({
+    this.withoutWatermark,
+    this.withWatermark,
+    this.fallback,
+  });
+
+  final String? withoutWatermark;
+  final String? withWatermark;
+  final String? fallback;
+
+  String? get defaultUrl => withoutWatermark ?? withWatermark ?? fallback;
+
+  List<MediaFormat> toFormats() {
+    final formats = <MediaFormat>[];
+    final seen = <String>{};
+
+    void add(String? url, String label, {required bool recommended}) {
+      if (url == null || url.isEmpty || !seen.add(url)) return;
+      formats.add(
+        MediaFormat(
+          url: url,
+          label: label,
+          mimeType: 'video/mp4',
+          isRecommended: recommended,
+        ),
+      );
+    }
+
+    add(
+      withoutWatermark,
+      TikTokResolver.withoutWatermarkLabel,
+      recommended: true,
+    );
+    add(
+      withWatermark,
+      TikTokResolver.withWatermarkLabel,
+      recommended: withoutWatermark == null,
+    );
+    if (formats.isEmpty) {
+      add(fallback, 'Video', recommended: true);
+    }
+    return formats;
+  }
 }

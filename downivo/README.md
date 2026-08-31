@@ -42,6 +42,8 @@ flutter run -d chrome
 
 Validate the monorepo: `bash scripts/ci.sh` from `downivo/`.
 
+Release APK for a phone: `bash scripts/build_release_apk.sh --open` from `downivo/`.
+
 ## Documentation
 
 Product and architecture specs live in [`../documentation/`](../documentation/README.md). Open-source contributor guides: [`../docs/`](../docs/README.md).

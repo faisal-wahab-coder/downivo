@@ -121,6 +121,187 @@ void main() {
     });
   });
 
+  group('Instagram media id conversion', () {
+    test('IG-MID-001 converts public reel shortcode to numeric media id', () {
+      expect(
+        InstagramGraphqlResolver.mediaIdFromShortcode('DcLtDEhx5pd'),
+        '3966462019942980189',
+      );
+    });
+
+    test('IG-MID-002 rejects shortcodes outside the Instagram alphabet', () {
+      expect(InstagramGraphqlResolver.mediaIdFromShortcode('bad*code'), isNull);
+    });
+  });
+
+  group('Instagram Polaris logged-out payload parsing', () {
+    test('IG-POLARIS-001 video reel from if_not_gated_logged_out', () {
+      final payload = <String, dynamic>{
+        'data': {
+          'xig_polaris_media': {
+            'if_not_gated_logged_out': {
+              'video_versions': [
+                {
+                  'url': 'https://cdn.example.com/reel_1080.mp4',
+                  'width': 1080,
+                  'height': 1920,
+                },
+              ],
+              'image_versions2': {
+                'candidates': [
+                  {
+                    'url': 'https://cdn.example.com/thumb.jpg',
+                    'width': 1080,
+                    'height': 1920,
+                  },
+                ],
+              },
+              'caption': {'text': 'Morning reel'},
+            },
+          },
+        },
+      };
+      final result = InstagramGraphqlResolver.parsePayload(
+        pageUrl: Uri.parse(
+          'https://www.instagram.com/reel/DcLtDEhx5pd/?igsi=MXdlZHZ5bWh3a3NuYg==',
+        ),
+        shortcode: 'DcLtDEhx5pd',
+        payload: payload,
+      );
+      expect(result, isNotNull);
+      expect(result!.directUrl, contains('reel_1080.mp4'));
+      expect(result.mimeType, 'video/mp4');
+      expect(result.kind, DiscoveredResourceKind.video);
+      expect(result.title, 'Morning reel');
+    });
+
+    test('IG-POLARIS-002 photo carousel extracts every image', () {
+      final payload = <String, dynamic>{
+        'data': {
+          'xig_polaris_media': {
+            'if_not_gated_logged_out': {
+              'caption': {'text': 'Carousel post'},
+              'carousel_media': [
+                {
+                  'image_versions2': {
+                    'candidates': [
+                      {
+                        'url': 'https://cdn.example.com/slide_1.jpg',
+                        'width': 1080,
+                        'height': 1350,
+                      },
+                    ],
+                  },
+                },
+                {
+                  'image_versions2': {
+                    'candidates': [
+                      {
+                        'url': 'https://cdn.example.com/slide_2.jpg',
+                        'width': 1080,
+                        'height': 1350,
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        },
+      };
+      final results = InstagramGraphqlResolver.parseAllMedia(
+        pageUrl: Uri.parse(
+          'https://www.instagram.com/p/Dck28qujwLv/?img_index=2',
+        ),
+        shortcode: 'Dck28qujwLv',
+        payload: payload,
+      );
+      expect(results, hasLength(2));
+      expect(results[0].directUrl, contains('slide_1.jpg'));
+      expect(results[1].directUrl, contains('slide_2.jpg'));
+      expect(results.every((r) => r.mimeType == 'image/jpeg'), isTrue);
+    });
+
+    test('IG-POLARIS-003 gated media without product payload returns null', () {
+      final payload = <String, dynamic>{
+        'data': {
+          'xig_polaris_media': {
+            'if_not_gated_logged_out': null,
+          },
+        },
+      };
+      final result = InstagramGraphqlResolver.parsePayload(
+        pageUrl: Uri.parse('https://www.instagram.com/reel/DcifBECPztr/'),
+        shortcode: 'DcifBECPztr',
+        payload: payload,
+      );
+      expect(result, isNull);
+    });
+
+    test('IG-POLARIS-004 reel poster image is not treated as the video', () {
+      final payload = <String, dynamic>{
+        'data': {
+          'xig_polaris_media': {
+            'if_not_gated_logged_out': {
+              'media_type': 2,
+              'product_type': 'clips',
+              'image_versions2': {
+                'candidates': [
+                  {
+                    'url': 'https://cdn.example.com/poster.jpg',
+                    'width': 1080,
+                    'height': 1920,
+                  },
+                ],
+              },
+              'caption': {'text': 'proof I can be a morning person'},
+            },
+          },
+        },
+      };
+      final result = InstagramGraphqlResolver.parsePayload(
+        pageUrl: Uri.parse(
+          'https://www.instagram.com/reel/DcLtDEhx5pd/?igsi=MXdlZHZ5bWh3a3NuYg==',
+        ),
+        shortcode: 'DcLtDEhx5pd',
+        payload: payload,
+      );
+      expect(result, isNull);
+    });
+
+    test('IG-POLARIS-005 reel dash manifest yields the mp4, not the poster', () {
+      final payload = <String, dynamic>{
+        'data': {
+          'xig_polaris_media': {
+            'if_not_gated_logged_out': {
+              'media_type': 2,
+              'image_versions2': {
+                'candidates': [
+                  {
+                    'url': 'https://cdn.example.com/poster.jpg',
+                    'width': 1080,
+                    'height': 1920,
+                  },
+                ],
+              },
+              'video_dash_manifest':
+                  '<?xml version="1.0"?><MPD><BaseURL>https://cdn.example.com/reel_1080.mp4?oh=1&amp;oe=2</BaseURL></MPD>',
+            },
+          },
+        },
+      };
+      final result = InstagramGraphqlResolver.parsePayload(
+        pageUrl: Uri.parse('https://www.instagram.com/reel/DcLtDEhx5pd/'),
+        shortcode: 'DcLtDEhx5pd',
+        payload: payload,
+      );
+      expect(result, isNotNull);
+      expect(result!.directUrl, contains('reel_1080.mp4'));
+      expect(result.kind, DiscoveredResourceKind.video);
+      expect(result.mimeType, 'video/mp4');
+    });
+  });
+
   // ─────────────────────────────────────────────────────────────────────────
   // Phase 3 — Legacy shortcode_media parsing
   // ─────────────────────────────────────────────────────────────────────────
@@ -481,6 +662,23 @@ void main() {
       if (result != null) {
         expect(result.directUrl, contains('.jpg'));
       }
+    });
+
+    test('IG-HTML-006 reel with only og:image does not download the poster', () {
+      const html = '''
+        <html><head>
+        <meta property="og:image" content="https://scontent.cdninstagram.com/poster.jpg" />
+        <meta property="og:title" content="Instagram Reel" />
+        </head></html>
+      ''';
+      final result = MediaExtractor.extract(
+        pageUrl: Uri.parse(
+          'https://www.instagram.com/reel/DcLtDEhx5pd/?igsi=MXdlZHZ5bWh3a3NuYg==',
+        ),
+        html: html,
+        platform: SocialPlatform.instagram,
+      );
+      expect(result, isNull);
     });
   });
 }
