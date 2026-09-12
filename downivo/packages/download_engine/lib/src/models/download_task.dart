@@ -20,6 +20,14 @@ class DownloadTask {
     this.thumbnailUrl,
     this.platform,
     this.title,
+    this.connectionCount = 1,
+    this.segments = const [],
+    this.isStuck = false,
+    this.isSlow = false,
+    this.stuckDurationSecs = 0,
+    this.reloadCount = 0,
+    this.checksumSha256,
+    this.checksumMd5,
   });
 
   final String id;
@@ -40,10 +48,39 @@ class DownloadTask {
   final String? platform;
   final String? title;
 
+  /// Number of parallel connections for this download.
+  final int connectionCount;
+
+  /// Per-segment progress state (empty for single-connection downloads).
+  final List<DownloadSegment> segments;
+
+  /// Whether the download is currently stalled at 0 speed.
+  final bool isStuck;
+
+  /// Whether the download speed is below the slow threshold.
+  final bool isSlow;
+
+  /// How many seconds the download has been stuck at 0 speed.
+  final int stuckDurationSecs;
+
+  /// How many times connections have been reloaded.
+  final int reloadCount;
+
+  /// SHA-256 checksum computed after completion.
+  final String? checksumSha256;
+
+  /// MD5 checksum computed after completion.
+  final String? checksumMd5;
+
   int get bytesRemaining {
     final total = fileSize;
     if (total == null || total <= 0) return 0;
     return (total - bytesReceived).clamp(0, total);
+  }
+
+  Duration get eta {
+    if (speedBytesPerSec <= 0) return Duration.zero;
+    return Duration(seconds: (bytesRemaining / speedBytesPerSec).ceil());
   }
 
   bool get isActive =>
@@ -57,6 +94,9 @@ class DownloadTask {
   /// Completed download whose library file was deleted in Files.
   bool get isRemovedFromLibrary =>
       status == DownloadStatus.completed && !hasManagedFile;
+
+  /// Whether the server supports multi-segment (Range) downloads.
+  bool get supportsMultiSegment => connectionCount > 1 && segments.isNotEmpty;
 
   DownloadTask copyWith({
     String? fileName,
@@ -74,6 +114,14 @@ class DownloadTask {
     String? thumbnailUrl,
     String? platform,
     String? title,
+    int? connectionCount,
+    List<DownloadSegment>? segments,
+    bool? isStuck,
+    bool? isSlow,
+    int? stuckDurationSecs,
+    int? reloadCount,
+    String? checksumSha256,
+    String? checksumMd5,
   }) {
     return DownloadTask(
       id: id,
@@ -93,6 +141,14 @@ class DownloadTask {
       thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
       platform: platform ?? this.platform,
       title: title ?? this.title,
+      connectionCount: connectionCount ?? this.connectionCount,
+      segments: segments ?? this.segments,
+      isStuck: isStuck ?? this.isStuck,
+      isSlow: isSlow ?? this.isSlow,
+      stuckDurationSecs: stuckDurationSecs ?? this.stuckDurationSecs,
+      reloadCount: reloadCount ?? this.reloadCount,
+      checksumSha256: checksumSha256 ?? this.checksumSha256,
+      checksumMd5: checksumMd5 ?? this.checksumMd5,
     );
   }
 }
