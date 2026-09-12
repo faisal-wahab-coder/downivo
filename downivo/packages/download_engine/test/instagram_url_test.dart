@@ -154,6 +154,17 @@ void main() {
       expect(InstagramGraphqlResolver.shortcodeFromUri(uri), 'Dck28qujwLv');
     });
 
+    test('IG-SC-016 web copy-link with stkn still extracts shortcode', () {
+      final uri = Uri.parse(
+        'https://www.instagram.com/p/DdLBiRQDBR6/?utm_source=ig_web_copy_link&stkn=MzRlODBiNWFlZA==',
+      );
+      expect(InstagramGraphqlResolver.shortcodeFromUri(uri), 'DdLBiRQDBR6');
+      expect(
+        InstagramGraphqlResolver.canonicalPageUrl(uri, 'DdLBiRQDBR6').toString(),
+        'https://www.instagram.com/p/DdLBiRQDBR6/',
+      );
+    });
+
     test('IG-SC-009 profile URL returns null shortcode', () {
       final uri = Uri.parse('https://www.instagram.com/instagram/');
       expect(InstagramGraphqlResolver.shortcodeFromUri(uri), isNull);
