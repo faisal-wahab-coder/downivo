@@ -27,6 +27,20 @@ The product changelog with historical releases also lives in [`downivo/CHANGELOG
 
 - Stopped tracking `downivo/apps/mobile/android/app/google-services.json` (Firebase Android config). The file remains gitignored for local development. **Rotate the Firebase Android API key before the first public push** — see [docs/GIT_HISTORY_SECURITY.md](docs/GIT_HISTORY_SECURITY.md).
 
+## 1.3.0 - 2026-09-12
+
+### Added
+
+- Multi-segment downloads with a live segment view and speed graph
+- Optional download speed limit and time-window scheduler
+- Stall detection when a transfer stops making progress
+- File checksum verification from the downloads UI
+
+### Fixed
+
+- Instagram carousels now resolve every slide instead of returning only the cover photo
+- Instagram copy-link URLs with `stkn` still extract the shortcode
+
 ## 1.2.0 - 2026-08-25
 
 ### Added
