@@ -38,43 +38,53 @@ class DownloadStatusBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _StatusChip(
-            label: 'Total',
-            value: '$totalItems',
-            isDark: isDark,
-          ),
-          _dot(isDark),
-          _StatusChip(
-            label: 'Active',
-            value: '$activeCount',
-            valueColor: UdmColors.signalCyan,
-            isDark: isDark,
-          ),
-          _dot(isDark),
-          _StatusChip(
-            label: 'Completed',
-            value: '$completedCount',
-            valueColor: UdmColors.successMoss,
-            isDark: isDark,
-          ),
-          if (queuedCount > 0) ...[
-            _dot(isDark),
-            _StatusChip(
-              label: 'Queued',
-              value: '$queuedCount',
-              isDark: isDark,
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _StatusChip(
+                    label: 'Total',
+                    value: '$totalItems',
+                    isDark: isDark,
+                  ),
+                  _dot(isDark),
+                  _StatusChip(
+                    label: 'Active',
+                    value: '$activeCount',
+                    valueColor: UdmColors.signalCyan,
+                    isDark: isDark,
+                  ),
+                  _dot(isDark),
+                  _StatusChip(
+                    label: 'Completed',
+                    value: '$completedCount',
+                    valueColor: UdmColors.successMoss,
+                    isDark: isDark,
+                  ),
+                  if (queuedCount > 0) ...[
+                    _dot(isDark),
+                    _StatusChip(
+                      label: 'Queued',
+                      value: '$queuedCount',
+                      isDark: isDark,
+                    ),
+                  ],
+                  _dot(isDark),
+                  _StatusChip(
+                    label: 'Speed',
+                    value: _formatSpeed(totalSpeedBytesPerSec),
+                    valueColor: UdmColors.successMoss,
+                    isDark: isDark,
+                  ),
+                ],
+              ),
             ),
-          ],
-          _dot(isDark),
-          _StatusChip(
-            label: 'Speed',
-            value: _formatSpeed(totalSpeedBytesPerSec),
-            valueColor: UdmColors.successMoss,
-            isDark: isDark,
           ),
-          const Spacer(),
+          const SizedBox(width: UdmSpacing.sm),
           Text(
             'Downivo Engine v2',
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 10,
               fontFamily: 'monospace',

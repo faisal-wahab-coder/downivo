@@ -17,6 +17,8 @@ class InstagramGraphqlResolver {
   static const _asbdId = '359341';
   static const _docId = '27130156389949648';
   static const _friendlyName = 'PolarisLoggedOutDesktopWWWPostRootContentQuery';
+  static const _postDocId = '27128499623469141';
+  static const _postFriendlyName = 'PolarisPostRootQuery';
   static const _graphqlUrl = 'https://www.instagram.com/api/graphql';
   static const _homeUrl = 'https://www.instagram.com/';
   static const _shortcodeAlphabet =
@@ -44,6 +46,8 @@ class InstagramGraphqlResolver {
       mediaId: mediaId,
     );
 
+    var best = const <DiscoveredResource>[];
+
     if (session != null) {
       final payload = await _queryGraphql(
         pageUrl: canonical,
@@ -57,7 +61,8 @@ class InstagramGraphqlResolver {
           shortcode: shortcode,
           payload: payload,
         );
-        if (_usableResources(parsed, pageUrl)) return parsed;
+        best = _preferRicher(best, parsed, pageUrl);
+        if (_isCompleteDiscovery(best, pageUrl)) return best;
       }
 
       final info = await _queryMediaInfo(
@@ -71,7 +76,8 @@ class InstagramGraphqlResolver {
           shortcode: shortcode,
           payload: info,
         );
-        if (_usableResources(parsed, pageUrl)) return parsed;
+        best = _preferRicher(best, parsed, pageUrl);
+        if (_isCompleteDiscovery(best, pageUrl)) return best;
       }
     }
 
@@ -97,9 +103,10 @@ class InstagramGraphqlResolver {
         shortcode: shortcode,
         html: html,
       );
-      if (_usableResources(fromHtml, pageUrl)) return fromHtml;
+      best = _preferRicher(best, fromHtml, pageUrl);
+      if (_isCompleteDiscovery(best, pageUrl)) return best;
     }
-    return const [];
+    return best;
   }
 
   static Uri canonicalPageUrl(Uri pageUrl, String shortcode) {
@@ -275,6 +282,55 @@ class InstagramGraphqlResolver {
     required String shortcode,
     required _InstagramSession session,
   }) async {
+    final queries = <_GraphqlQuery>[
+      _GraphqlQuery(
+        docId: _docId,
+        friendlyName: _friendlyName,
+        variables: {
+          'media_id': mediaId,
+          'shortcode': shortcode,
+        },
+      ),
+      if (!_isVideoPage(pageUrl))
+        _GraphqlQuery(
+          docId: _postDocId,
+          friendlyName: _postFriendlyName,
+          variables: {
+            'shortcode': shortcode,
+            '__relay_internal__pv__PolarisAIGMMediaWebLabelEnabledrelayprovider':
+                false,
+          },
+        ),
+    ];
+
+    Map<String, dynamic>? bestPayload;
+    var bestCount = 0;
+    for (final query in queries) {
+      final payload = await _postGraphql(
+        pageUrl: pageUrl,
+        session: session,
+        query: query,
+      );
+      if (payload == null) continue;
+      final count = _parseAllMedia(
+        pageUrl: pageUrl,
+        shortcode: shortcode,
+        payload: payload,
+      ).length;
+      if (count > bestCount) {
+        bestPayload = payload;
+        bestCount = count;
+      }
+      if (bestCount > 1) return bestPayload;
+    }
+    return bestPayload;
+  }
+
+  Future<Map<String, dynamic>?> _postGraphql({
+    required Uri pageUrl,
+    required _InstagramSession session,
+    required _GraphqlQuery query,
+  }) async {
     try {
       final headers = {
         ..._apiHeaders(
@@ -284,18 +340,15 @@ class InstagramGraphqlResolver {
           cookie: session.cookieHeader,
         ),
         'Content-Type': 'application/x-www-form-urlencoded',
-        'X-FB-Friendly-Name': _friendlyName,
+        'X-FB-Friendly-Name': query.friendlyName,
       };
 
       final body = <String, String>{
         'fb_api_caller_class': 'RelayModern',
-        'fb_api_req_friendly_name': _friendlyName,
+        'fb_api_req_friendly_name': query.friendlyName,
         'server_timestamps': 'true',
-        'variables': jsonEncode({
-          'media_id': mediaId,
-          'shortcode': shortcode,
-        }),
-        'doc_id': _docId,
+        'variables': jsonEncode(query.variables),
+        'doc_id': query.docId,
         if (session.lsdToken != null) 'lsd': session.lsdToken!,
       };
 
@@ -373,63 +426,93 @@ class InstagramGraphqlResolver {
     required String shortcode,
     required Map<String, dynamic> payload,
   }) {
-    final fromItems = _resourcesFromItemsField(
-      pageUrl: pageUrl,
-      shortcode: shortcode,
-      items: payload['items'],
+    var best = const <DiscoveredResource>[];
+
+    void consider(List<DiscoveredResource> next) {
+      best = _preferRicher(best, next, pageUrl);
+    }
+
+    consider(
+      _resourcesFromItemsField(
+        pageUrl: pageUrl,
+        shortcode: shortcode,
+        items: payload['items'],
+      ),
     );
-    if (_usableResources(fromItems, pageUrl)) return fromItems;
+    if (_isCompleteDiscovery(best, pageUrl)) return best;
 
     if (_isVideoPage(pageUrl)) {
       final withVideo = _findMapWithVideo(payload);
       if (withVideo != null) {
-        final parsed = _resourcesFromItem(
-          pageUrl: pageUrl,
-          shortcode: shortcode,
-          item: withVideo,
+        consider(
+          _resourcesFromItem(
+            pageUrl: pageUrl,
+            shortcode: shortcode,
+            item: withVideo,
+          ),
         );
-        if (_usableResources(parsed, pageUrl)) return parsed;
+        if (_usableResources(best, pageUrl)) return best;
       }
     }
 
-    final data = _asStringMap(payload['data']);
-    if (data == null) {
-      return _usableResources(fromItems, pageUrl) ? fromItems : const [];
+    final withCarousel = _findMapWithCarousel(payload);
+    if (withCarousel != null) {
+      consider(
+        _resourcesFromItem(
+          pageUrl: pageUrl,
+          shortcode: shortcode,
+          item: withCarousel,
+        ),
+      );
+      if (best.length > 1) return best;
     }
+
+    final data = _asStringMap(payload['data']);
+    if (data == null) return best;
 
     final polaris = _polarisProductMedia(data['xig_polaris_media']);
     if (polaris != null) {
-      final parsed = _resourcesFromItem(
-        pageUrl: pageUrl,
-        shortcode: shortcode,
-        item: polaris,
+      consider(
+        _resourcesFromItem(
+          pageUrl: pageUrl,
+          shortcode: shortcode,
+          item: polaris,
+        ),
       );
-      if (_usableResources(parsed, pageUrl)) return parsed;
-      if (parsed.isNotEmpty && !_isVideoPage(pageUrl)) return parsed;
+      if (best.length > 1) return best;
     }
 
     final webInfo = _asStringMap(data['xdt_api__v1__media__shortcode__web_info']);
     if (webInfo != null) {
-      final parsed = _resourcesFromItemsField(
-        pageUrl: pageUrl,
-        shortcode: shortcode,
-        items: webInfo['items'],
+      consider(
+        _resourcesFromItemsField(
+          pageUrl: pageUrl,
+          shortcode: shortcode,
+          items: webInfo['items'],
+        ),
       );
-      if (_usableResources(parsed, pageUrl) ||
-          (parsed.isNotEmpty && !_isVideoPage(pageUrl))) {
-        return parsed;
-      }
+      if (best.length > 1) return best;
+    }
+
+    final legacyMedia = _asStringMap(data['xdt_shortcode_media']);
+    if (legacyMedia != null) {
+      consider(
+        _resourcesFromItem(
+          pageUrl: pageUrl,
+          shortcode: shortcode,
+          item: legacyMedia,
+        ),
+      );
+      if (best.length > 1) return best;
     }
 
     final legacy =
         _parseLegacyShortcodeMedia(pageUrl, data['xdt_shortcode_media']);
     if (legacy != null) {
-      if (!_isVideoPage(pageUrl) || _isVideoResource(legacy)) {
-        return [legacy];
-      }
+      consider([legacy]);
     }
 
-    return const [];
+    return best;
   }
 
   List<DiscoveredResource> _resourcesFromItemsField({
@@ -438,12 +521,42 @@ class InstagramGraphqlResolver {
     required Object? items,
   }) {
     if (items is! List || items.isEmpty) return const [];
-    final item = _asStringMap(items.first);
-    if (item == null) return const [];
+    final first = _asStringMap(items.first);
+    if (first != null) {
+      final fromFirst = _resourcesFromItem(
+        pageUrl: pageUrl,
+        shortcode: shortcode,
+        item: first,
+      );
+      if (fromFirst.length > 1 || _isCarouselContainer(first)) {
+        return fromFirst;
+      }
+    }
+
+    if (items.length > 1) {
+      final results = <DiscoveredResource>[];
+      for (var i = 0; i < items.length; i++) {
+        final media = _asStringMap(items[i]);
+        if (media == null) continue;
+        final caption = _captionText(media['caption']) ??
+            _captionFromLegacyEdges(media['edge_media_to_caption']);
+        final resource = _extractSingleResource(
+          item: media,
+          pageUrl: pageUrl,
+          shortcode: shortcode,
+          caption: caption,
+          index: i + 1,
+        );
+        if (resource != null) results.add(resource);
+      }
+      if (results.length > 1) return results;
+    }
+
+    if (first == null) return const [];
     return _resourcesFromItem(
       pageUrl: pageUrl,
       shortcode: shortcode,
-      item: item,
+      item: first,
     );
   }
 
@@ -454,15 +567,18 @@ class InstagramGraphqlResolver {
   }) {
     final caption = _captionText(item['caption']) ??
         _captionFromLegacyEdges(item['edge_media_to_caption']);
-    final carouselMedia = item['carousel_media'];
-    if (carouselMedia is List && carouselMedia.isNotEmpty) {
+    final slides = _carouselSlides(item);
+    if (slides != null && slides.isNotEmpty) {
       return _parseAllCarouselMedia(
         pageUrl: pageUrl,
         shortcode: shortcode,
-        carousel: carouselMedia,
+        carousel: slides,
         caption: caption,
       );
     }
+
+    // A carousel parent with no children is incomplete — never use the cover.
+    if (_isCarouselContainer(item)) return const [];
 
     final single = _extractSingleResource(
       item: item,
@@ -711,6 +827,53 @@ class InstagramGraphqlResolver {
     return resources.any(_isVideoResource);
   }
 
+  static bool _isCompleteDiscovery(
+    List<DiscoveredResource> resources,
+    Uri pageUrl,
+  ) {
+    if (!_usableResources(resources, pageUrl)) return false;
+    if (_isVideoPage(pageUrl)) return true;
+    return resources.length > 1;
+  }
+
+  static List<DiscoveredResource> _preferRicher(
+    List<DiscoveredResource> current,
+    List<DiscoveredResource> next,
+    Uri pageUrl,
+  ) {
+    if (!_usableResources(next, pageUrl)) return current;
+    if (!_usableResources(current, pageUrl)) return next;
+    return next.length > current.length ? next : current;
+  }
+
+  static bool _isCarouselContainer(Map<String, dynamic> item) {
+    if (_asInt(item['media_type']) == 8) return true;
+    final product = item['product_type']?.toString().toLowerCase();
+    if (product == 'carousel_container' || product == 'carousel') {
+      return true;
+    }
+    final count = _asInt(item['carousel_media_count']);
+    if (count != null && count > 1) return true;
+    final ids = item['carousel_media_ids'];
+    return ids is List && ids.length > 1;
+  }
+
+  static List<dynamic>? _carouselSlides(Map<String, dynamic> item) {
+    final carousel = item['carousel_media'];
+    if (carousel is List && carousel.isNotEmpty) return carousel;
+
+    final sidecar = _asStringMap(item['edge_sidecar_to_children']);
+    final edges = sidecar?['edges'];
+    if (edges is! List || edges.isEmpty) return null;
+    final nodes = <dynamic>[];
+    for (final edge in edges) {
+      final mapped = _asStringMap(edge);
+      if (mapped == null) continue;
+      nodes.add(mapped['node'] ?? mapped);
+    }
+    return nodes.isEmpty ? null : nodes;
+  }
+
   static bool _isVideoResource(DiscoveredResource resource) {
     if (resource.kind == DiscoveredResourceKind.video) return true;
     final mime = resource.mimeType?.toLowerCase() ?? '';
@@ -725,19 +888,20 @@ class InstagramGraphqlResolver {
       _asInt(item['original_height']),
     );
 
-    final versions = item['image_versions2'];
-    if (versions is Map<String, dynamic>) {
+    final versions = _asStringMap(item['image_versions2']);
+    if (versions != null) {
       final candidates = versions['candidates'];
       if (candidates is List && candidates.isNotEmpty) {
         _ImageCandidate? best;
         for (final candidate in candidates) {
-          if (candidate is! Map<String, dynamic>) continue;
-          final url = candidate['url'];
+          final mapped = _asStringMap(candidate);
+          if (mapped == null) continue;
+          final url = mapped['url'];
           if (url is! String || !url.startsWith('http')) continue;
           final scored = _ImageCandidate(
             url: url,
-            width: _asInt(candidate['width']) ?? 0,
-            height: _asInt(candidate['height']) ?? 0,
+            width: _asInt(mapped['width']) ?? 0,
+            height: _asInt(mapped['height']) ?? 0,
             originalAspect: originalAspect,
           );
           if (best == null || scored.isBetterThan(best)) {
@@ -902,10 +1066,13 @@ class InstagramGraphqlResolver {
   static Map<String, dynamic>? _mediaItemFromHtml(String html) {
     final polaris = _polarisMediaFromHtml(html);
     if (polaris != null && _bestVideoUrl(polaris) != null) return polaris;
+    if (polaris != null && _carouselSlides(polaris) != null) return polaris;
 
     if (html.contains('video_versions') ||
         html.contains('video_dash_manifest') ||
-        html.contains('"video_url"')) {
+        html.contains('"video_url"') ||
+        html.contains('carousel_media') ||
+        html.contains('edge_sidecar_to_children')) {
       final scripts = RegExp(
         r'<script\b[^>]*>([\s\S]*?)</script>',
         caseSensitive: false,
@@ -915,11 +1082,15 @@ class InstagramGraphqlResolver {
         if (raw == null || raw.length < 20) continue;
         if (!raw.contains('video_versions') &&
             !raw.contains('video_dash_manifest') &&
-            !raw.contains('"video_url"')) {
+            !raw.contains('"video_url"') &&
+            !raw.contains('carousel_media') &&
+            !raw.contains('edge_sidecar_to_children')) {
           continue;
         }
         try {
           final decoded = jsonDecode(raw);
+          final carousel = _findMapWithCarousel(decoded);
+          if (carousel != null) return carousel;
           final found = _findMapWithVideo(decoded);
           if (found != null) return found;
         } on Object {
@@ -929,6 +1100,24 @@ class InstagramGraphqlResolver {
     }
 
     return polaris;
+  }
+
+  static Map<String, dynamic>? _findMapWithCarousel(Object? node) {
+    if (node is Map) {
+      final mapped = _asStringMap(node);
+      if (mapped == null) return null;
+      if (_carouselSlides(mapped) != null) return mapped;
+      for (final value in mapped.values) {
+        final found = _findMapWithCarousel(value);
+        if (found != null) return found;
+      }
+    } else if (node is List) {
+      for (final item in node) {
+        final found = _findMapWithCarousel(item);
+        if (found != null) return found;
+      }
+    }
+    return null;
   }
 
   static Map<String, dynamic>? _findMapWithVideo(Object? node) {
@@ -1019,6 +1208,18 @@ class InstagramGraphqlResolver {
     }
     return null;
   }
+}
+
+class _GraphqlQuery {
+  const _GraphqlQuery({
+    required this.docId,
+    required this.friendlyName,
+    required this.variables,
+  });
+
+  final String docId;
+  final String friendlyName;
+  final Map<String, Object?> variables;
 }
 
 class _InstagramSession {

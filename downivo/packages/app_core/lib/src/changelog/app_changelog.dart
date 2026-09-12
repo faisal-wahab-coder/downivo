@@ -12,6 +12,14 @@ class ChangelogEntry {
 /// Newest version first. Keep in sync with `CHANGELOG.md` and pubspec version.
 const changelogEntries = <ChangelogEntry>[
   ChangelogEntry(
+    version: '1.3.0',
+    highlights: [
+      'Multi-segment downloads with a live segment view and speed graph.',
+      'Optional speed limit, download scheduler, stall detection, and checksum verification.',
+      'Instagram carousels now resolve every slide instead of only the cover photo.',
+    ],
+  ),
+  ChangelogEntry(
     version: '1.2.0',
     highlights: [
       "What's new after an update, and from Settings → About.",

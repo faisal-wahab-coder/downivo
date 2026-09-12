@@ -10,6 +10,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 
 - Open-source GitHub preparation (license, contributing guides, issue/PR templates).
 
+## [1.3.0] - 2026-09-12
+
+### Added
+
+- Multi-segment downloads with a live segment view and speed graph
+- Optional download speed limit and time-window scheduler
+- Stall detection when a transfer stops making progress
+- File checksum verification from the downloads UI
+
+### Fixed
+
+- Instagram carousels now resolve every slide instead of returning only the cover photo
+- Instagram copy-link URLs with `stkn` still extract the shortcode
+
 ## [1.2.0] - 2026-08-25
 
 ### Added
