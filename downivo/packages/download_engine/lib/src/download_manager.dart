@@ -29,9 +29,17 @@ import 'download_repository.dart';
 import 'filename_resolver.dart';
 import 'models/download_task.dart';
 import 'range_response_parser.dart';
+import 'speed_limiter.dart';
+import 'stall_detector.dart';
 import 'web_request_proxy.dart';
 
 typedef DownloadProgressCallback = void Function(DownloadTask task);
+
+/// Default number of parallel connections for multi-segment downloads.
+const kDefaultConnectionCount = 4;
+
+/// Minimum file size (in bytes) to use multi-segment downloads (1 MB).
+const kMinSegmentFileSize = 1024 * 1024;
 
 /// Orchestrates validation, queueing, execution, and persistence.
 class DownloadManager {
@@ -44,11 +52,13 @@ class DownloadManager {
     this.maxConcurrent = 3,
     this.maxRetries = 3,
     this.telemetry = const DownloadEngineTelemetry(),
+    int defaultConnectionCount = kDefaultConnectionCount,
   }) : _repository = repository,
        _storagePaths = storagePaths,
        _fileStore = fileStore ?? createFileStore(),
        _dio = dio ?? Dio(),
-       _uuid = const Uuid() {
+       _uuid = const Uuid(),
+       _defaultConnectionCount = defaultConnectionCount {
     attachWebRequestProxy(_dio);
     _contentProviders = contentProviders ?? ContentProviderRegistry(dio: _dio);
     _dio.options.connectTimeout = const Duration(seconds: 30);
@@ -64,6 +74,13 @@ class DownloadManager {
   int maxConcurrent;
   final int maxRetries;
   final DownloadEngineTelemetry telemetry;
+  int _defaultConnectionCount;
+
+  /// Speed limiter for bandwidth throttling.
+  final speedLimiter = SpeedLimiter();
+
+  /// Stall/slow-speed detector.
+  final stallDetector = StallDetector();
 
   final _tasks = <String, DownloadTask>{};
   final _cancelTokens = <String, CancelToken>{};
@@ -75,6 +92,11 @@ class DownloadManager {
   final _downloadStartedAt = <String, DateTime>{};
   final _progressController = StreamController<List<DownloadTask>>.broadcast();
   final _emitGate = ThrottleGate(interval: const Duration(milliseconds: 250));
+
+  int get defaultConnectionCount => _defaultConnectionCount;
+  set defaultConnectionCount(int value) {
+    _defaultConnectionCount = value.clamp(1, 16);
+  }
 
   Stream<List<DownloadTask>> get tasksStream => _progressController.stream;
   List<DownloadTask> get tasks {
@@ -323,6 +345,47 @@ class DownloadManager {
     unawaited(_processQueue());
   }
 
+  /// Reloads connections for a stuck/slow download without losing progress.
+  /// Cancels the current transfer and re-queues to restart from the last byte.
+  Future<void> reloadConnections(String id) async {
+    final task = _tasks[id];
+    if (task == null) return;
+    if (task.status != DownloadStatus.downloading) return;
+
+    _cancelTokens[id]?.cancel('reload');
+    stallDetector.clear(id);
+
+    final bytesReceived = await _bytesOnDisk(task);
+    final fileSize = task.fileSize;
+    await _updateTask(
+      task.copyWith(
+        status: DownloadStatus.queued,
+        bytesReceived: bytesReceived,
+        progress: fileSize != null && fileSize > 0
+            ? (bytesReceived / fileSize).clamp(0, 1)
+            : task.progress,
+        isStuck: false,
+        isSlow: false,
+        stuckDurationSecs: 0,
+        reloadCount: task.reloadCount + 1,
+        errorMessage: null,
+        updatedAt: DateTime.now(),
+      ),
+    );
+    unawaited(_processQueue());
+  }
+
+  /// Reloads all currently stuck downloads.
+  Future<void> reloadAllStuck() async {
+    final stuckIds = _tasks.values
+        .where((t) => t.status == DownloadStatus.downloading && t.isStuck)
+        .map((t) => t.id)
+        .toList();
+    for (final id in stuckIds) {
+      await reloadConnections(id);
+    }
+  }
+
   Future<void> retry(String id) async {
     _cancelledIds.remove(id);
     _retryCounts[id] = 0;
@@ -348,6 +411,7 @@ class DownloadManager {
     final activeCount = _tasks.values
         .where((t) => t.status == DownloadStatus.downloading)
         .length;
+    speedLimiter.setActiveDownloads(activeCount.clamp(1, 100));
     if (activeCount >= maxConcurrent) return;
 
     final next = _queuedTasksSorted();
@@ -608,6 +672,9 @@ class DownloadManager {
       );
 
       await for (final chunk in response.data!.stream) {
+        // Apply speed limiter throttling.
+        await speedLimiter.throttle(chunk.length);
+
         sink.add(chunk);
         received += chunk.length;
         final now = DateTime.now();
@@ -626,6 +693,8 @@ class DownloadManager {
           speedBytesPerSec: speed,
           updatedAt: now,
         );
+        // Evaluate stall/slow status.
+        workingTask = stallDetector.evaluate(workingTask, speed);
         await _updateTask(workingTask, persist: false);
       }
 
@@ -641,6 +710,7 @@ class DownloadManager {
 
       _queueOrder.remove(task.id);
       _requestHeaders.remove(task.id);
+      stallDetector.clear(task.id);
       await _persistQueueOrder();
 
       await _updateTask(
@@ -649,6 +719,9 @@ class DownloadManager {
           progress: 1,
           bytesReceived: received,
           fileSize: totalBytes ?? received,
+          isStuck: false,
+          isSlow: false,
+          stuckDurationSecs: 0,
           updatedAt: DateTime.now(),
         ),
       );
@@ -1089,7 +1162,9 @@ class DownloadManager {
               'Open a specific Reel, photo, or video post to download it.';
         case InstagramContentType.post:
         case InstagramContentType.unknown:
-          break;
+          return 'Instagram did not return a downloadable video file for this '
+              'post. The Reel is likely public, but Instagram withheld the '
+              'video URL. Open it in the in-app browser first, then try again.';
       }
     }
 

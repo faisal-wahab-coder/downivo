@@ -1,0 +1,6 @@
+{
+  "name": "SmartDownload Manager",
+  "description": "Professional IDM-style Windows download manager with multi-connection engine, queue & scheduler, Chrome extension (Manifest V3), and native messaging host.",
+  "requestFramePermissions": ["clipboard-read", "clipboard-write", "notifications"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

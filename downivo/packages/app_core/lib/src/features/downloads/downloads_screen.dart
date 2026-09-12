@@ -30,6 +30,16 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
   @override
   Widget build(BuildContext context) {
     final tasks = ref.watch(downloadListProvider);
+
+    // Update rolling speed history.
+    final currentTotalSpeed = tasks
+        .where((t) => t.status == DownloadStatus.downloading)
+        .fold<int>(0, (sum, t) => sum + t.speedBytesPerSec);
+    _speedHistory.add(currentTotalSpeed);
+    if (_speedHistory.length > _maxSpeedHistory) {
+      _speedHistory.removeAt(0);
+    }
+
     final queued = tasks
         .where((t) => t.status == DownloadStatus.queued)
         .toList();
@@ -199,6 +209,28 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
             ],
           );
 
+    // Aggregate stats for status bar and speed graph.
+    final totalSpeed = downloading.fold<int>(
+        0, (sum, t) => sum + t.speedBytesPerSec);
+    final stuckDownloads =
+        downloading.where((t) => t.isStuck).toList();
+
+    final mainContent = wide && selected != null && tasks.isNotEmpty
+        ? Row(
+            children: [
+              Expanded(flex: 3, child: list),
+              VerticalDivider(
+                width: 1,
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
+              Expanded(
+                flex: 2,
+                child: _DownloadDetailPane(task: selected, ref: ref),
+              ),
+            ],
+          )
+        : list;
+
     return UdmScaffold(
       title: 'Downloads',
       actions: [
@@ -213,6 +245,15 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
             );
           },
         ),
+        if (stuckDownloads.isNotEmpty)
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Reload stuck (${stuckDownloads.length})',
+            onPressed: () {
+              final manager = ref.read(downloadManagerProvider);
+              manager.reloadAllStuck();
+            },
+          ),
         IconButton(
           icon: const Icon(Icons.history),
           tooltip: 'Download history',
@@ -231,23 +272,49 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
             onPressed: () => resumeAllDownloads(ref),
           ),
       ],
-      body: wide && selected != null && tasks.isNotEmpty
-          ? Row(
-              children: [
-                Expanded(flex: 3, child: list),
-                VerticalDivider(
-                  width: 1,
-                  color: Theme.of(context).colorScheme.outlineVariant,
-                ),
-                Expanded(
-                  flex: 2,
-                  child: _DownloadDetailPane(task: selected, ref: ref),
-                ),
-              ],
-            )
-          : list,
+      body: Column(
+        children: [
+          Expanded(child: mainContent),
+
+          // Segment visualizer for selected downloading task.
+          if (selected != null &&
+              selected.status == DownloadStatus.downloading &&
+              selected.segments.isNotEmpty)
+            SegmentVisualizerWidget(
+              segments: selected.segments,
+              fileName: selected.fileName,
+              connectionCount: selected.connectionCount,
+              totalBytes: selected.fileSize ?? 0,
+              downloadedBytes: selected.bytesReceived,
+              speed: selected.speedBytesPerSec,
+              etaSeconds: selected.eta.inSeconds,
+              isDownloading: true,
+            ),
+
+          // Speed graph when downloads are active.
+          if (downloading.isNotEmpty)
+            SpeedGraphWidget(
+              speedHistory: _speedHistory,
+              currentSpeed: totalSpeed,
+              speedLimitBytesPerSec: 0,
+            ),
+
+          // Status bar footer.
+          DownloadStatusBar(
+            totalItems: tasks.length,
+            activeCount: downloading.length,
+            totalSpeedBytesPerSec: totalSpeed,
+            completedCount: completed.length,
+            queuedCount: queued.length,
+          ),
+        ],
+      ),
     );
   }
+
+  // Rolling speed history for the graph.
+  final _speedHistory = <int>[];
+  static const _maxSpeedHistory = 50;
 
   List<DownloadTask> _visibleTasks(
     List<DownloadTask> tasks, {
@@ -360,6 +427,8 @@ class _DownloadDetailPane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return ListView(
       padding: const EdgeInsets.all(UdmSpacing.lg),
       children: [
@@ -371,6 +440,55 @@ class _DownloadDetailPane extends StatelessWidget {
           maxLines: 3,
           overflow: TextOverflow.ellipsis,
         ),
+        const SizedBox(height: UdmSpacing.md),
+        // Badges row.
+        Wrap(
+          spacing: UdmSpacing.sm,
+          runSpacing: 4,
+          children: [
+            DownloadStatusBadge(
+              status: task.status,
+              isStuck: task.isStuck,
+              isSlow: task.isSlow,
+            ),
+            if (task.connectionCount > 1)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: UdmColors.electricBlue.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                      color: UdmColors.electricBlue.withValues(alpha: 0.3)),
+                ),
+                child: Text(
+                  '${task.connectionCount} connections',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: UdmColors.electricBlue,
+                  ),
+                ),
+              ),
+            if (task.reloadCount > 0)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: UdmColors.cautionAmber.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  'Reloaded ×${task.reloadCount}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: UdmColors.cautionAmber,
+                  ),
+                ),
+              ),
+          ],
+        ),
         const SizedBox(height: UdmSpacing.lg),
         DownloadProgressDetails(task: task),
         const SizedBox(height: UdmSpacing.lg),
@@ -378,6 +496,21 @@ class _DownloadDetailPane extends StatelessWidget {
           alignment: Alignment.centerLeft,
           child: DownloadTrailingActions(task: task, ref: ref),
         ),
+        // Segment visualizer for multi-connection downloads.
+        if (task.segments.isNotEmpty &&
+            task.status == DownloadStatus.downloading) ...[
+          const SizedBox(height: UdmSpacing.lg),
+          SegmentVisualizerWidget(
+            segments: task.segments,
+            fileName: task.fileName,
+            connectionCount: task.connectionCount,
+            totalBytes: task.fileSize ?? 0,
+            downloadedBytes: task.bytesReceived,
+            speed: task.speedBytesPerSec,
+            etaSeconds: task.eta.inSeconds,
+            isDownloading: true,
+          ),
+        ],
         if (task.isRemovedFromLibrary) ...[
           const SizedBox(height: UdmSpacing.lg),
           Text(
@@ -388,6 +521,50 @@ class _DownloadDetailPane extends StatelessWidget {
         if (task.filePath != null) ...[
           const SizedBox(height: UdmSpacing.lg),
           Text(task.filePath!, style: Theme.of(context).textTheme.bodySmall),
+        ],
+        // Checksum info for completed downloads.
+        if (task.status == DownloadStatus.completed &&
+            task.checksumSha256 != null) ...[
+          const SizedBox(height: UdmSpacing.lg),
+          Container(
+            padding: const EdgeInsets.all(UdmSpacing.md),
+            decoration: BoxDecoration(
+              color: isDark ? UdmColors.insetWell : UdmColors.paper,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: UdmColors.successMoss.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.verified_rounded,
+                        size: 14, color: UdmColors.successMoss),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Verified',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: UdmColors.successMoss,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'SHA-256: ${task.checksumSha256!.substring(0, 16)}…',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontFamily: 'monospace',
+                    color: isDark ? UdmColors.fogSteel : UdmColors.slateMute,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ],
     );

@@ -145,6 +145,252 @@ class SettingsScreen extends ConsumerWidget {
       ),
     ];
 
+    final connectionSettings = [
+      const UdmSectionLabel(label: 'Connection'),
+      Card(
+        child: Column(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.hub_outlined),
+              title: const Text('Default connections per download'),
+              subtitle: Text('${settings.defaultConnectionCount} parallel connections'),
+              trailing: SizedBox(
+                width: 120,
+                child: Slider(
+                  value: settings.defaultConnectionCount.toDouble(),
+                  min: 1,
+                  max: 16,
+                  divisions: 15,
+                  label: '${settings.defaultConnectionCount}',
+                  onChanged: (value) => ref
+                      .read(settingsProvider.notifier)
+                      .setDefaultConnectionCount(value.round()),
+                ),
+              ),
+            ),
+            const Divider(height: 1),
+            SwitchListTile(
+              secondary: const Icon(Icons.refresh_rounded),
+              title: const Text('Auto-reload stuck downloads'),
+              subtitle: const Text(
+                  'Reconnect when speed drops to 0 for 8+ seconds'),
+              value: settings.autoReloadStuck,
+              onChanged: (enabled) => ref
+                  .read(settingsProvider.notifier)
+                  .setAutoReloadStuck(enabled),
+            ),
+          ],
+        ),
+      ),
+    ];
+
+    final speedLimiterSettings = [
+      const UdmSectionLabel(label: 'Speed Limiter'),
+      Card(
+        child: Column(
+          children: [
+            SwitchListTile(
+              secondary: const Icon(Icons.speed_outlined),
+              title: const Text('Speed limiter'),
+              subtitle: Text(settings.speedLimitConfig.enabled
+                  ? _formatSpeedLimit(settings.speedLimitConfig.limitBytesPerSec)
+                  : 'Unlimited'),
+              value: settings.speedLimitConfig.enabled,
+              onChanged: (enabled) {
+                final updated =
+                    settings.speedLimitConfig.copyWith(enabled: enabled);
+                ref.read(settingsProvider.notifier).setSpeedLimitConfig(updated);
+              },
+            ),
+            if (settings.speedLimitConfig.enabled) ...[
+              const Divider(height: 1),
+              ListTile(
+                title: const Text('Global cap'),
+                subtitle: Text(_formatSpeedLimit(
+                    settings.speedLimitConfig.limitBytesPerSec)),
+                trailing: SizedBox(
+                  width: 160,
+                  child: Slider(
+                    value: (settings.speedLimitConfig.limitBytesPerSec /
+                            (1024 * 1024))
+                        .clamp(0.1, 100)
+                        .toDouble(),
+                    min: 0.1,
+                    max: 100,
+                    divisions: 999,
+                    label: _formatSpeedLimit(
+                        settings.speedLimitConfig.limitBytesPerSec),
+                    onChanged: (value) {
+                      final bytes = (value * 1024 * 1024).round();
+                      final updated =
+                          settings.speedLimitConfig.copyWith(limitBytesPerSec: bytes);
+                      ref
+                          .read(settingsProvider.notifier)
+                          .setSpeedLimitConfig(updated);
+                    },
+                  ),
+                ),
+              ),
+              const Divider(height: 1),
+              SwitchListTile(
+                title: const Text('Day/night schedule'),
+                subtitle: const Text(
+                    'Different speeds for daytime vs nighttime'),
+                value: settings.speedLimitConfig.scheduledLimit.enabled,
+                onChanged: (enabled) {
+                  final updated = settings.speedLimitConfig.copyWith(
+                    scheduledLimit: settings.speedLimitConfig.scheduledLimit
+                        .copyWith(enabled: enabled),
+                  );
+                  ref.read(settingsProvider.notifier).setSpeedLimitConfig(updated);
+                },
+              ),
+              if (settings.speedLimitConfig.scheduledLimit.enabled) ...[
+                ListTile(
+                  title: Text(
+                      'Day (${settings.speedLimitConfig.scheduledLimit.dayStartHour}:00–'
+                      '${settings.speedLimitConfig.scheduledLimit.nightStartHour}:00)'),
+                  subtitle: Text(_formatSpeedLimit(
+                      settings.speedLimitConfig.scheduledLimit.daytimeLimitBytesPerSec)),
+                ),
+                ListTile(
+                  title: Text(
+                      'Night (${settings.speedLimitConfig.scheduledLimit.nightStartHour}:00–'
+                      '${settings.speedLimitConfig.scheduledLimit.dayStartHour}:00)'),
+                  subtitle: Text(settings.speedLimitConfig.scheduledLimit
+                              .nighttimeLimitBytesPerSec ==
+                          0
+                      ? 'Unlimited'
+                      : _formatSpeedLimit(settings.speedLimitConfig.scheduledLimit
+                          .nighttimeLimitBytesPerSec)),
+                ),
+              ],
+            ],
+          ],
+        ),
+      ),
+    ];
+
+    final schedulerSettings = [
+      const UdmSectionLabel(label: 'Scheduler'),
+      Card(
+        child: Column(
+          children: [
+            SwitchListTile(
+              secondary: const Icon(Icons.schedule_outlined),
+              title: const Text('Download scheduler'),
+              subtitle: Text(settings.schedulerConfig.enabled
+                  ? '${settings.schedulerConfig.startTime} – ${settings.schedulerConfig.stopTime}'
+                  : 'Disabled'),
+              value: settings.schedulerConfig.enabled,
+              onChanged: (enabled) {
+                final updated =
+                    settings.schedulerConfig.copyWith(enabled: enabled);
+                ref.read(settingsProvider.notifier).setSchedulerConfig(updated);
+              },
+            ),
+            if (settings.schedulerConfig.enabled) ...[
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.play_arrow_rounded),
+                title: const Text('Start time'),
+                subtitle: Text(settings.schedulerConfig.startTime),
+                onTap: () async {
+                  final time = await _pickTime(context,
+                      settings.schedulerConfig.startTime);
+                  if (time != null) {
+                    ref.read(settingsProvider.notifier).setSchedulerConfig(
+                          settings.schedulerConfig.copyWith(startTime: time),
+                        );
+                  }
+                },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.stop_rounded),
+                title: const Text('Stop time'),
+                subtitle: Text(settings.schedulerConfig.stopTime),
+                onTap: () async {
+                  final time = await _pickTime(context,
+                      settings.schedulerConfig.stopTime);
+                  if (time != null) {
+                    ref.read(settingsProvider.notifier).setSchedulerConfig(
+                          settings.schedulerConfig.copyWith(stopTime: time),
+                        );
+                  }
+                },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                title: const Text('Max concurrent'),
+                subtitle: Text(
+                    '${settings.schedulerConfig.maxConcurrentDownloads} downloads'),
+                trailing: SizedBox(
+                  width: 120,
+                  child: Slider(
+                    value: settings.schedulerConfig.maxConcurrentDownloads
+                        .toDouble(),
+                    min: 1,
+                    max: 8,
+                    divisions: 7,
+                    label: '${settings.schedulerConfig.maxConcurrentDownloads}',
+                    onChanged: (value) {
+                      ref.read(settingsProvider.notifier).setSchedulerConfig(
+                            settings.schedulerConfig.copyWith(
+                              maxConcurrentDownloads: value.round(),
+                            ),
+                          );
+                    },
+                  ),
+                ),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                title: const Text('When finished'),
+                subtitle: Text(settings.schedulerConfig.actionOnCompletion.label),
+                trailing: PopupMenuButton<SchedulerAction>(
+                  tooltip: 'Action on completion',
+                  onSelected: (action) =>
+                      ref.read(settingsProvider.notifier).setSchedulerConfig(
+                            settings.schedulerConfig
+                                .copyWith(actionOnCompletion: action),
+                          ),
+                  itemBuilder: (context) => SchedulerAction.values
+                      .map(
+                        (action) => PopupMenuItem(
+                          value: action,
+                          child: Text(action.label),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    ];
+
+    final categorySettings = [
+      const UdmSectionLabel(label: 'Categories'),
+      Card(
+        child: Column(
+          children: [
+            SwitchListTile(
+              secondary: const Icon(Icons.folder_special_outlined),
+              title: const Text('Auto-organize downloads'),
+              subtitle: const Text(
+                  'Save files to subfolders by category (Videos, Images, Audio, etc.)'),
+              value: settings.categoryAutoOrganize,
+              onChanged: (enabled) => ref
+                  .read(settingsProvider.notifier)
+                  .setCategoryAutoOrganize(enabled),
+            ),
+          ],
+        ),
+      ),
+    ];
+
     final privacy = [
       const UdmSectionLabel(label: 'Privacy & diagnostics'),
       Card(
@@ -292,11 +538,23 @@ class SettingsScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: column([...appearance, ...quality, ...downloads]),
+                  child: column([
+                    ...appearance,
+                    ...quality,
+                    ...downloads,
+                    ...connectionSettings,
+                    ...categorySettings,
+                  ]),
                 ),
                 const SizedBox(width: UdmSpacing.xxl),
                 Expanded(
-                  child: column([...storage, ...privacy, ...advanced]),
+                  child: column([
+                    ...speedLimiterSettings,
+                    ...schedulerSettings,
+                    ...storage,
+                    ...privacy,
+                    ...advanced,
+                  ]),
                 ),
               ],
             )
@@ -307,6 +565,14 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: UdmSpacing.xxl),
             ...downloads,
             const SizedBox(height: UdmSpacing.xxl),
+            ...connectionSettings,
+            const SizedBox(height: UdmSpacing.xxl),
+            ...speedLimiterSettings,
+            const SizedBox(height: UdmSpacing.xxl),
+            ...schedulerSettings,
+            const SizedBox(height: UdmSpacing.xxl),
+            ...categorySettings,
+            const SizedBox(height: UdmSpacing.xxl),
             ...storage,
             const SizedBox(height: UdmSpacing.xxl),
             ...privacy,
@@ -316,5 +582,32 @@ class SettingsScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  static String _formatSpeedLimit(int bytesPerSec) {
+    if (bytesPerSec <= 0) return 'Unlimited';
+    if (bytesPerSec < 1024) return '${bytesPerSec} B/s';
+    if (bytesPerSec < 1024 * 1024) {
+      return '${(bytesPerSec / 1024).toStringAsFixed(1)} KB/s';
+    }
+    return '${(bytesPerSec / (1024 * 1024)).toStringAsFixed(1)} MB/s';
+  }
+
+  static Future<String?> _pickTime(
+    BuildContext context,
+    String currentTime,
+  ) async {
+    final parts = currentTime.split(':');
+    final initialTime = TimeOfDay(
+      hour: int.tryParse(parts[0]) ?? 0,
+      minute: int.tryParse(parts.last) ?? 0,
+    );
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+    );
+    if (picked == null) return null;
+    return '${picked.hour.toString().padLeft(2, '0')}:'
+        '${picked.minute.toString().padLeft(2, '0')}';
   }
 }

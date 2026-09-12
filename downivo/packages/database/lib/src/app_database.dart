@@ -17,7 +17,7 @@ class AppDatabase {
     return _database!;
   }
 
-  static const schemaVersion = 4;
+  static const schemaVersion = 5;
 
   Future<Database> _open() async {
     await ensureSqfliteInitialized();
@@ -44,7 +44,10 @@ class AppDatabase {
             updated_at TEXT NOT NULL,
             thumbnail_url TEXT,
             platform TEXT,
-            title TEXT
+            title TEXT,
+            connection_count INTEGER NOT NULL DEFAULT 1,
+            checksum_sha256 TEXT,
+            checksum_md5 TEXT
           )
         ''');
         await db.execute('''
@@ -87,6 +90,17 @@ class AppDatabase {
           );
           await db.execute('ALTER TABLE downloads ADD COLUMN platform TEXT');
           await db.execute('ALTER TABLE downloads ADD COLUMN title TEXT');
+        }
+        if (oldVersion < 5) {
+          await db.execute(
+            'ALTER TABLE downloads ADD COLUMN connection_count INTEGER NOT NULL DEFAULT 1',
+          );
+          await db.execute(
+            'ALTER TABLE downloads ADD COLUMN checksum_sha256 TEXT',
+          );
+          await db.execute(
+            'ALTER TABLE downloads ADD COLUMN checksum_md5 TEXT',
+          );
         }
       },
     );

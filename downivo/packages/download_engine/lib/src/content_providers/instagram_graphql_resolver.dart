@@ -40,6 +40,7 @@ class InstagramGraphqlResolver {
     final canonical = canonicalPageUrl(pageUrl, shortcode);
     final session = await _loadSession(
       pageUrl: canonical,
+      shareUrl: pageUrl,
       mediaId: mediaId,
     );
 
@@ -47,6 +48,7 @@ class InstagramGraphqlResolver {
       final payload = await _queryGraphql(
         pageUrl: canonical,
         mediaId: mediaId,
+        shortcode: shortcode,
         session: session,
       );
       if (payload != null) {
@@ -57,16 +59,46 @@ class InstagramGraphqlResolver {
         );
         if (_usableResources(parsed, pageUrl)) return parsed;
       }
+
+      final info = await _queryMediaInfo(
+        pageUrl: canonical,
+        mediaId: mediaId,
+        session: session,
+      );
+      if (info != null) {
+        final parsed = _parseAllMedia(
+          pageUrl: pageUrl,
+          shortcode: shortcode,
+          payload: info,
+        );
+        if (_usableResources(parsed, pageUrl)) return parsed;
+      }
     }
 
-    final html = await _fetchHtml(canonical);
-    if (html == null || html.isEmpty) return const [];
-    final fromHtml = _parsePrefetchedMedia(
-      pageUrl: pageUrl,
-      shortcode: shortcode,
-      html: html,
-    );
-    if (_usableResources(fromHtml, pageUrl)) return fromHtml;
+    final htmlPages = <String>[
+      if (session?.pageHtml != null && session!.pageHtml!.isNotEmpty)
+        session.pageHtml!,
+    ];
+    final fetched = <String>{
+      if (session?.pageHtml != null) canonical.toString(),
+    };
+    for (final target in [
+      pageUrl,
+      canonical,
+      Uri.parse('${canonical}embed/'),
+    ]) {
+      if (!fetched.add(target.toString())) continue;
+      final html = await _fetchHtml(target);
+      if (html != null && html.isNotEmpty) htmlPages.add(html);
+    }
+    for (final html in htmlPages) {
+      final fromHtml = _parsePrefetchedMedia(
+        pageUrl: pageUrl,
+        shortcode: shortcode,
+        html: html,
+      );
+      if (_usableResources(fromHtml, pageUrl)) return fromHtml;
+    }
     return const [];
   }
 
@@ -142,12 +174,14 @@ class InstagramGraphqlResolver {
 
   Future<_InstagramSession?> _loadSession({
     required Uri pageUrl,
+    required Uri shareUrl,
     required String mediaId,
   }) async {
     try {
       final cookies = <String, String>{};
       String? csrf;
       String? lsd;
+      String? pageHtml;
 
       final home = await _dio.get<String>(
         _homeUrl,
@@ -166,6 +200,35 @@ class InstagramGraphqlResolver {
       final homeHtml = home.data ?? '';
       csrf = cookies['csrftoken'] ?? _csrfFromHtml(homeHtml);
       lsd = _lsdFromHtml(homeHtml);
+
+      try {
+        final postUrl = shareUrl.hasQuery ? shareUrl : pageUrl;
+        final post = await _dio.get<String>(
+          postUrl.toString(),
+          options: Options(
+            responseType: ResponseType.plain,
+            followRedirects: true,
+            validateStatus: (status) =>
+                status != null && status >= 200 && status < 400,
+            headers: {
+              ...SocialHttpHeaders.forPageFetch(
+                postUrl,
+                SocialPlatform.instagram,
+              ),
+              if (cookies.isNotEmpty) 'Cookie': _cookieHeader(cookies),
+            },
+          ),
+        );
+        cookies.addAll(_cookiesFromHeaders(post.headers.map));
+        final html = post.data;
+        if (html != null && html.isNotEmpty) {
+          pageHtml = html;
+          csrf = cookies['csrftoken'] ?? csrf ?? _csrfFromHtml(html);
+          lsd ??= _lsdFromHtml(html);
+        }
+      } on DioException {
+        // Share-page fetch is best-effort.
+      }
 
       try {
         final ruling = await _dio.get<String>(
@@ -193,20 +256,13 @@ class InstagramGraphqlResolver {
         // Ruling is best-effort; GraphQL can still succeed with homepage tokens.
       }
 
-      if (lsd == null && csrf == null && cookies.isEmpty) {
-        final pageHtml = await _fetchHtml(pageUrl);
-        if (pageHtml == null || pageHtml.isEmpty) return null;
-        csrf = _csrfFromHtml(pageHtml);
-        lsd = _lsdFromHtml(pageHtml);
-        if (csrf == null && lsd == null) return null;
-      }
-
       if (csrf == null && lsd == null && cookies.isEmpty) return null;
 
       return _InstagramSession(
         cookies: cookies,
         csrfToken: csrf,
         lsdToken: lsd,
+        pageHtml: pageHtml,
       );
     } on DioException {
       return null;
@@ -216,6 +272,7 @@ class InstagramGraphqlResolver {
   Future<Map<String, dynamic>?> _queryGraphql({
     required Uri pageUrl,
     required String mediaId,
+    required String shortcode,
     required _InstagramSession session,
   }) async {
     try {
@@ -234,7 +291,10 @@ class InstagramGraphqlResolver {
         'fb_api_caller_class': 'RelayModern',
         'fb_api_req_friendly_name': _friendlyName,
         'server_timestamps': 'true',
-        'variables': jsonEncode({'media_id': mediaId}),
+        'variables': jsonEncode({
+          'media_id': mediaId,
+          'shortcode': shortcode,
+        }),
         'doc_id': _docId,
         if (session.lsdToken != null) 'lsd': session.lsdToken!,
       };
@@ -270,36 +330,116 @@ class InstagramGraphqlResolver {
     }
   }
 
+  Future<Map<String, dynamic>?> _queryMediaInfo({
+    required Uri pageUrl,
+    required String mediaId,
+    required _InstagramSession session,
+  }) async {
+    final endpoints = [
+      'https://www.instagram.com/api/v1/media/$mediaId/info/',
+      'https://i.instagram.com/api/v1/media/$mediaId/info/',
+    ];
+    for (final endpoint in endpoints) {
+      try {
+        final response = await _dio.get<dynamic>(
+          endpoint,
+          options: Options(
+            responseType: ResponseType.plain,
+            followRedirects: true,
+            validateStatus: (status) =>
+                status != null && status >= 200 && status < 400,
+            headers: {
+              ..._apiHeaders(
+                pageUrl: pageUrl,
+                csrf: session.csrfToken,
+                lsd: session.lsdToken,
+                cookie: session.cookieHeader,
+              ),
+              'Accept': 'application/json, text/plain, */*',
+            },
+          ),
+        );
+        final parsed = _decodeJsonMap(response.data);
+        if (parsed != null && parsed['items'] is List) return parsed;
+      } on DioException {
+        continue;
+      }
+    }
+    return null;
+  }
+
   List<DiscoveredResource> _parseAllMedia({
     required Uri pageUrl,
     required String shortcode,
     required Map<String, dynamic> payload,
   }) {
-    final data = payload['data'];
-    if (data is! Map<String, dynamic>) return const [];
+    final fromItems = _resourcesFromItemsField(
+      pageUrl: pageUrl,
+      shortcode: shortcode,
+      items: payload['items'],
+    );
+    if (_usableResources(fromItems, pageUrl)) return fromItems;
+
+    if (_isVideoPage(pageUrl)) {
+      final withVideo = _findMapWithVideo(payload);
+      if (withVideo != null) {
+        final parsed = _resourcesFromItem(
+          pageUrl: pageUrl,
+          shortcode: shortcode,
+          item: withVideo,
+        );
+        if (_usableResources(parsed, pageUrl)) return parsed;
+      }
+    }
+
+    final data = _asStringMap(payload['data']);
+    if (data == null) {
+      return _usableResources(fromItems, pageUrl) ? fromItems : const [];
+    }
 
     final polaris = _polarisProductMedia(data['xig_polaris_media']);
     if (polaris != null) {
-      return _resourcesFromItem(
+      final parsed = _resourcesFromItem(
         pageUrl: pageUrl,
         shortcode: shortcode,
         item: polaris,
       );
+      if (_usableResources(parsed, pageUrl)) return parsed;
+      if (parsed.isNotEmpty && !_isVideoPage(pageUrl)) return parsed;
     }
 
-    final webInfo = data['xdt_api__v1__media__shortcode__web_info'];
-    if (webInfo is! Map<String, dynamic>) {
-      final legacy =
-          _parseLegacyShortcodeMedia(pageUrl, data['xdt_shortcode_media']);
-      return legacy != null ? [legacy] : const [];
+    final webInfo = _asStringMap(data['xdt_api__v1__media__shortcode__web_info']);
+    if (webInfo != null) {
+      final parsed = _resourcesFromItemsField(
+        pageUrl: pageUrl,
+        shortcode: shortcode,
+        items: webInfo['items'],
+      );
+      if (_usableResources(parsed, pageUrl) ||
+          (parsed.isNotEmpty && !_isVideoPage(pageUrl))) {
+        return parsed;
+      }
     }
 
-    final items = webInfo['items'];
+    final legacy =
+        _parseLegacyShortcodeMedia(pageUrl, data['xdt_shortcode_media']);
+    if (legacy != null) {
+      if (!_isVideoPage(pageUrl) || _isVideoResource(legacy)) {
+        return [legacy];
+      }
+    }
+
+    return const [];
+  }
+
+  List<DiscoveredResource> _resourcesFromItemsField({
+    required Uri pageUrl,
+    required String shortcode,
+    required Object? items,
+  }) {
     if (items is! List || items.isEmpty) return const [];
-
-    final item = items.first;
-    if (item is! Map<String, dynamic>) return const [];
-
+    final item = _asStringMap(items.first);
+    if (item == null) return const [];
     return _resourcesFromItem(
       pageUrl: pageUrl,
       shortcode: shortcode,
@@ -312,7 +452,8 @@ class InstagramGraphqlResolver {
     required String shortcode,
     required Map<String, dynamic> item,
   }) {
-    final caption = _captionText(item['caption']);
+    final caption = _captionText(item['caption']) ??
+        _captionFromLegacyEdges(item['edge_media_to_caption']);
     final carouselMedia = item['carousel_media'];
     if (carouselMedia is List && carouselMedia.isNotEmpty) {
       return _parseAllCarouselMedia(
@@ -338,7 +479,7 @@ class InstagramGraphqlResolver {
     required String shortcode,
     required String html,
   }) {
-    final product = _polarisMediaFromHtml(html);
+    final product = _mediaItemFromHtml(html);
     if (product == null) return const [];
     return _resourcesFromItem(
       pageUrl: pageUrl,
@@ -355,8 +496,8 @@ class InstagramGraphqlResolver {
   }) {
     final results = <DiscoveredResource>[];
     for (var i = 0; i < carousel.length; i++) {
-      final media = carousel[i];
-      if (media is! Map<String, dynamic>) continue;
+      final media = _asStringMap(carousel[i]);
+      if (media == null) continue;
 
       final resource = _extractSingleResource(
         item: media,
@@ -400,6 +541,11 @@ class InstagramGraphqlResolver {
         mimeType: 'video/mp4',
         thumbnailUrl: thumbnailUrl,
         kind: DiscoveredResourceKind.video,
+        requestHeaders: SocialHttpHeaders.forMediaDownload(
+          pageUrl: pageUrl,
+          mediaUrl: videoUrl,
+          platform: SocialPlatform.instagram,
+        ),
       );
     }
 
@@ -753,6 +899,64 @@ class InstagramGraphqlResolver {
     return null;
   }
 
+  static Map<String, dynamic>? _mediaItemFromHtml(String html) {
+    final polaris = _polarisMediaFromHtml(html);
+    if (polaris != null && _bestVideoUrl(polaris) != null) return polaris;
+
+    if (html.contains('video_versions') ||
+        html.contains('video_dash_manifest') ||
+        html.contains('"video_url"')) {
+      final scripts = RegExp(
+        r'<script\b[^>]*>([\s\S]*?)</script>',
+        caseSensitive: false,
+      ).allMatches(html);
+      for (final match in scripts) {
+        final raw = match.group(1)?.trim();
+        if (raw == null || raw.length < 20) continue;
+        if (!raw.contains('video_versions') &&
+            !raw.contains('video_dash_manifest') &&
+            !raw.contains('"video_url"')) {
+          continue;
+        }
+        try {
+          final decoded = jsonDecode(raw);
+          final found = _findMapWithVideo(decoded);
+          if (found != null) return found;
+        } on Object {
+          continue;
+        }
+      }
+    }
+
+    return polaris;
+  }
+
+  static Map<String, dynamic>? _findMapWithVideo(Object? node) {
+    if (node is Map) {
+      final mapped = _asStringMap(node);
+      if (mapped == null) return null;
+      if (_bestVideoUrl(mapped) != null) return mapped;
+      for (final value in mapped.values) {
+        final found = _findMapWithVideo(value);
+        if (found != null) return found;
+      }
+    } else if (node is List) {
+      for (final item in node) {
+        final found = _findMapWithVideo(item);
+        if (found != null) return found;
+      }
+    }
+    return null;
+  }
+
+  static Map<String, dynamic>? _asStringMap(Object? value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) {
+      return value.map((key, val) => MapEntry(key.toString(), val));
+    }
+    return null;
+  }
+
   static Map<String, dynamic>? _polarisMediaFromHtml(String html) {
     if (!html.contains('xig_polaris_media')) return null;
     final scripts = RegExp(
@@ -822,11 +1026,13 @@ class _InstagramSession {
     required this.cookies,
     required this.csrfToken,
     required this.lsdToken,
+    this.pageHtml,
   });
 
   final Map<String, String> cookies;
   final String? csrfToken;
   final String? lsdToken;
+  final String? pageHtml;
 
   String get cookieHeader =>
       cookies.entries.map((e) => '${e.key}=${e.value}').join('; ');

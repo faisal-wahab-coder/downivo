@@ -1,6 +1,10 @@
 library download_engine;
 
+export 'src/checksum_calculator.dart';
 export 'src/download_error_formatter.dart';
+export 'src/segment_download_worker.dart';
+export 'src/speed_limiter.dart';
+export 'src/stall_detector.dart';
 export 'src/content_providers/content_provider_registry.dart';
 export 'src/content_providers/dailymotion_cdn_http.dart';
 export 'src/content_providers/dailymotion_resolver.dart';

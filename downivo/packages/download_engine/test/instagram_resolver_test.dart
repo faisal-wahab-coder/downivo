@@ -300,6 +300,80 @@ void main() {
       expect(result.kind, DiscoveredResourceKind.video);
       expect(result.mimeType, 'video/mp4');
     });
+
+    test('IG-POLARIS-006 media info items payload yields the reel video', () {
+      final payload = <String, dynamic>{
+        'items': [
+          {
+            'media_type': 2,
+            'video_versions': [
+              {
+                'url': 'https://cdn.example.com/info_api.mp4',
+                'width': 1080,
+                'height': 1920,
+              },
+            ],
+            'image_versions2': {
+              'candidates': [
+                {
+                  'url': 'https://cdn.example.com/poster.jpg',
+                  'width': 1080,
+                  'height': 1920,
+                },
+              ],
+            },
+          },
+        ],
+        'status': 'ok',
+      };
+      final result = InstagramGraphqlResolver.parsePayload(
+        pageUrl: Uri.parse('https://www.instagram.com/reel/DcLtDEhx5pd/'),
+        shortcode: 'DcLtDEhx5pd',
+        payload: payload,
+      );
+      expect(result, isNotNull);
+      expect(result!.directUrl, contains('info_api.mp4'));
+      expect(result.kind, DiscoveredResourceKind.video);
+    });
+
+    test('IG-POLARIS-007 nested video_versions wins over gated polaris poster',
+        () {
+      final payload = <String, dynamic>{
+        'data': {
+          'xig_polaris_media': {
+            'if_not_gated_logged_out': {
+              'media_type': 2,
+              'image_versions2': {
+                'candidates': [
+                  {
+                    'url': 'https://cdn.example.com/poster.jpg',
+                    'width': 1080,
+                    'height': 1920,
+                  },
+                ],
+              },
+            },
+          },
+          'sidecar': {
+            'video_versions': [
+              {
+                'url': 'https://cdn.example.com/nested_reel.mp4',
+                'width': 720,
+                'height': 1280,
+              },
+            ],
+          },
+        },
+      };
+      final result = InstagramGraphqlResolver.parsePayload(
+        pageUrl: Uri.parse('https://www.instagram.com/reel/DcLtDEhx5pd/'),
+        shortcode: 'DcLtDEhx5pd',
+        payload: payload,
+      );
+      expect(result, isNotNull);
+      expect(result!.directUrl, contains('nested_reel.mp4'));
+      expect(result.kind, DiscoveredResourceKind.video);
+    });
   });
 
   // ─────────────────────────────────────────────────────────────────────────
