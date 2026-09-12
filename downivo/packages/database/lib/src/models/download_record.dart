@@ -18,6 +18,9 @@ class DownloadRecord {
     this.thumbnailUrl,
     this.platform,
     this.title,
+    this.connectionCount = 1,
+    this.checksumSha256,
+    this.checksumMd5,
   });
 
   final String id;
@@ -37,6 +40,9 @@ class DownloadRecord {
   final String? thumbnailUrl;
   final String? platform;
   final String? title;
+  final int connectionCount;
+  final String? checksumSha256;
+  final String? checksumMd5;
 
   Map<String, Object?> toMap() => {
     'id': id,
@@ -56,6 +62,9 @@ class DownloadRecord {
     'thumbnail_url': thumbnailUrl,
     'platform': platform,
     'title': title,
+    'connection_count': connectionCount,
+    'checksum_sha256': checksumSha256,
+    'checksum_md5': checksumMd5,
   };
 
   factory DownloadRecord.fromMap(Map<String, Object?> map) {
@@ -81,6 +90,9 @@ class DownloadRecord {
       thumbnailUrl: map['thumbnail_url'] as String?,
       platform: map['platform'] as String?,
       title: map['title'] as String?,
+      connectionCount: (map['connection_count'] as int?) ?? 1,
+      checksumSha256: map['checksum_sha256'] as String?,
+      checksumMd5: map['checksum_md5'] as String?,
     );
   }
 }
