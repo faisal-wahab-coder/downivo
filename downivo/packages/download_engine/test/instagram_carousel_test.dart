@@ -355,5 +355,191 @@ void main() {
       expect(results[0].directUrl, contains('good.jpg'));
       expect(results[1].directUrl, contains('good.mp4'));
     });
+
+    test('IG-CAR-ALL-007 cover photo is not used when carousel children are missing',
+        () {
+      final payload = <String, dynamic>{
+        'data': {
+          'xig_polaris_media': {
+            'if_not_gated_logged_out': {
+              'media_type': 8,
+              'carousel_media_count': 4,
+              'carousel_media': null,
+              'image_versions2': {
+                'candidates': [
+                  {
+                    'url': 'https://cdn.example.com/cover_only.jpg',
+                    'width': 1080,
+                    'height': 1350,
+                  },
+                ],
+              },
+            },
+          },
+        },
+      };
+      final results = InstagramGraphqlResolver.parseAllMedia(
+        pageUrl: Uri.parse(
+          'https://www.instagram.com/p/DdLBiRQDBR6/?utm_source=ig_web_copy_link&stkn=MzRlODBiNWFlZA==',
+        ),
+        shortcode: 'DdLBiRQDBR6',
+        payload: payload,
+      );
+      expect(results, isEmpty);
+    });
+
+    test('IG-CAR-ALL-008 nested carousel_media wins over polaris cover', () {
+      final payload = <String, dynamic>{
+        'data': {
+          'xig_polaris_media': {
+            'if_not_gated_logged_out': {
+              'media_type': 8,
+              'image_versions2': {
+                'candidates': [
+                  {
+                    'url': 'https://cdn.example.com/cover.jpg',
+                    'width': 1080,
+                    'height': 1350,
+                  },
+                ],
+              },
+            },
+          },
+          'sidecar': {
+            'carousel_media': [
+              {
+                'image_versions2': {
+                  'candidates': [
+                    {
+                      'url': 'https://cdn.example.com/slide_1.jpg',
+                      'width': 1080,
+                      'height': 1350,
+                    },
+                  ],
+                },
+              },
+              {
+                'image_versions2': {
+                  'candidates': [
+                    {
+                      'url': 'https://cdn.example.com/slide_2.jpg',
+                      'width': 1080,
+                      'height': 1350,
+                    },
+                  ],
+                },
+              },
+              {
+                'image_versions2': {
+                  'candidates': [
+                    {
+                      'url': 'https://cdn.example.com/slide_3.jpg',
+                      'width': 1080,
+                      'height': 1350,
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      };
+      final results = InstagramGraphqlResolver.parseAllMedia(
+        pageUrl: Uri.parse('https://www.instagram.com/p/DdLBiRQDBR6/'),
+        shortcode: 'DdLBiRQDBR6',
+        payload: payload,
+      );
+      expect(results, hasLength(3));
+      expect(results[0].directUrl, contains('slide_1.jpg'));
+      expect(results[1].directUrl, contains('slide_2.jpg'));
+      expect(results[2].directUrl, contains('slide_3.jpg'));
+    });
+
+    test('IG-CAR-ALL-009 legacy sidecar edges extract every image', () {
+      final payload = <String, dynamic>{
+        'data': {
+          'xdt_shortcode_media': {
+            'shortcode': 'DdLBiRQDBR6',
+            'edge_media_to_caption': {
+              'edges': [
+                {
+                  'node': {'text': 'Four photos'},
+                },
+              ],
+            },
+            'edge_sidecar_to_children': {
+              'edges': [
+                {
+                  'node': {
+                    'display_url': 'https://cdn.example.com/side_1.jpg',
+                  },
+                },
+                {
+                  'node': {
+                    'display_url': 'https://cdn.example.com/side_2.jpg',
+                  },
+                },
+                {
+                  'node': {
+                    'display_url': 'https://cdn.example.com/side_3.jpg',
+                  },
+                },
+                {
+                  'node': {
+                    'display_url': 'https://cdn.example.com/side_4.jpg',
+                  },
+                },
+              ],
+            },
+          },
+        },
+      };
+      final results = InstagramGraphqlResolver.parseAllMedia(
+        pageUrl: Uri.parse('https://www.instagram.com/p/DdLBiRQDBR6/'),
+        shortcode: 'DdLBiRQDBR6',
+        payload: payload,
+      );
+      expect(results, hasLength(4));
+      expect(results[0].directUrl, contains('side_1.jpg'));
+      expect(results[3].directUrl, contains('side_4.jpg'));
+      expect(results.every((item) => item.title == 'Four photos'), isTrue);
+    });
+
+    test('IG-CAR-ALL-010 flat items list is treated as carousel slides', () {
+      final payload = <String, dynamic>{
+        'items': [
+          {
+            'image_versions2': {
+              'candidates': [
+                {
+                  'url': 'https://cdn.example.com/flat_1.jpg',
+                  'width': 1080,
+                  'height': 1350,
+                },
+              ],
+            },
+          },
+          {
+            'image_versions2': {
+              'candidates': [
+                {
+                  'url': 'https://cdn.example.com/flat_2.jpg',
+                  'width': 1080,
+                  'height': 1350,
+                },
+              ],
+            },
+          },
+        ],
+      };
+      final results = InstagramGraphqlResolver.parseAllMedia(
+        pageUrl: Uri.parse('https://www.instagram.com/p/DdLBiRQDBR6/'),
+        shortcode: 'DdLBiRQDBR6',
+        payload: payload,
+      );
+      expect(results, hasLength(2));
+      expect(results[0].directUrl, contains('flat_1.jpg'));
+      expect(results[1].directUrl, contains('flat_2.jpg'));
+    });
   });
 }
