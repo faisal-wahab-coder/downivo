@@ -30,7 +30,7 @@ Lightweight process so the project stays reviewable without a bureaucracy layer.
 - Discuss on an issue first.
 - Examples: sqflite schema that cannot migrate, changing `applicationId`, dropping a resolver, raising minSdk.
 - Document in `CHANGELOG.md` under Unreleased / a new version.
-- Prefer a minor version for features and a patch for fixes (`1.2.0+4` uses the `+` build number for Play).
+- Prefer a minor version for features and a patch for fixes (`1.3.0+5` uses the `+` build number for Play).
 
 ## Releases
 

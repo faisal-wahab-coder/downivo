@@ -115,7 +115,7 @@ void main() {
     expect(find.text("What's new"), findsNothing);
     expect(
       container.read(settingsProvider).lastSeenChangelogVersion,
-      '1.2.0',
+      '1.3.0',
     );
   });
 
@@ -137,11 +137,11 @@ void main() {
       );
 
       await tester.pumpAndSettle();
-      expect(find.text("What's new in 1.2.0"), findsOneWidget);
+      expect(find.text("What's new in 1.3.0"), findsOneWidget);
 
       await tester.tap(find.text('Got it'));
       await tester.pumpAndSettle();
-      expect(find.text("What's new in 1.2.0"), findsNothing);
+      expect(find.text("What's new in 1.3.0"), findsNothing);
     },
   );
 
@@ -157,7 +157,7 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text("What's new in 1.2.0"), findsNothing);
+    expect(find.text("What's new in 1.3.0"), findsNothing);
     expect(find.text('Welcome to Downivo'), findsOneWidget);
   });
 }

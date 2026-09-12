@@ -14,14 +14,15 @@ There is no account system and no backend. Everything runs on the device.
 
 ## Features
 
-Only features that exist in the current codebase (`1.2.0+4`) are listed.
+Only features that exist in the current codebase (`1.3.0+5`) are listed.
 
 ### Download Management
 
 - Direct HTTP(S) downloads
 - Queue with a maximum of 3 concurrent workers, reorder, and priority
 - Pause / resume with HTTP Range, cancel, retry, pause-all / resume-all
-- Progress UI (speed, ETA, remaining size)
+- Progress UI (speed, ETA, remaining size), speed graph, and multi-segment view
+- Optional speed limit, download scheduler, stall detection, and checksum verification
 - Crash recovery and queue restore
 - Download history with clear-history that keeps files on disk
 
