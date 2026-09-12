@@ -20,6 +20,21 @@ const _preferredFormatKey = 'preferred_format';
 const _changelogVersionKey = 'last_seen_changelog_version';
 const _analyticsEnabledKey = 'analytics_enabled';
 const _crashReportingKey = 'crash_reporting_enabled';
+const _speedLimitEnabledKey = 'speed_limit_enabled';
+const _speedLimitBytesKey = 'speed_limit_bytes_per_sec';
+const _scheduledLimitEnabledKey = 'scheduled_limit_enabled';
+const _scheduledDayLimitKey = 'scheduled_day_limit';
+const _scheduledNightLimitKey = 'scheduled_night_limit';
+const _scheduledDayStartKey = 'scheduled_day_start_hour';
+const _scheduledNightStartKey = 'scheduled_night_start_hour';
+const _schedulerEnabledKey = 'scheduler_enabled';
+const _schedulerStartTimeKey = 'scheduler_start_time';
+const _schedulerStopTimeKey = 'scheduler_stop_time';
+const _schedulerMaxConcurrentKey = 'scheduler_max_concurrent';
+const _schedulerActionKey = 'scheduler_action_on_completion';
+const _defaultConnectionCountKey = 'default_connection_count';
+const _autoReloadStuckKey = 'auto_reload_stuck';
+const _categoryAutoOrganizeKey = 'category_auto_organize';
 
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   throw UnimplementedError('SharedPreferences must be overridden at bootstrap');
@@ -44,6 +59,11 @@ class AppSettings {
     this.lastSeenChangelogVersion,
     this.analyticsEnabled = true,
     this.crashReportingEnabled = true,
+    this.speedLimitConfig = const SpeedLimitConfig(),
+    this.schedulerConfig = const SchedulerConfig(),
+    this.defaultConnectionCount = 4,
+    this.autoReloadStuck = true,
+    this.categoryAutoOrganize = true,
   });
 
   final bool onboardingComplete;
@@ -55,6 +75,11 @@ class AppSettings {
   final String? lastSeenChangelogVersion;
   final bool analyticsEnabled;
   final bool crashReportingEnabled;
+  final SpeedLimitConfig speedLimitConfig;
+  final SchedulerConfig schedulerConfig;
+  final int defaultConnectionCount;
+  final bool autoReloadStuck;
+  final bool categoryAutoOrganize;
 
   AppSettings copyWith({
     bool? onboardingComplete,
@@ -66,6 +91,11 @@ class AppSettings {
     Object? lastSeenChangelogVersion = _unset,
     bool? analyticsEnabled,
     bool? crashReportingEnabled,
+    SpeedLimitConfig? speedLimitConfig,
+    SchedulerConfig? schedulerConfig,
+    int? defaultConnectionCount,
+    bool? autoReloadStuck,
+    bool? categoryAutoOrganize,
   }) {
     return AppSettings(
       onboardingComplete: onboardingComplete ?? this.onboardingComplete,
@@ -85,6 +115,12 @@ class AppSettings {
       analyticsEnabled: analyticsEnabled ?? this.analyticsEnabled,
       crashReportingEnabled:
           crashReportingEnabled ?? this.crashReportingEnabled,
+      speedLimitConfig: speedLimitConfig ?? this.speedLimitConfig,
+      schedulerConfig: schedulerConfig ?? this.schedulerConfig,
+      defaultConnectionCount:
+          defaultConnectionCount ?? this.defaultConnectionCount,
+      autoReloadStuck: autoReloadStuck ?? this.autoReloadStuck,
+      categoryAutoOrganize: categoryAutoOrganize ?? this.categoryAutoOrganize,
     );
   }
 }
@@ -103,6 +139,29 @@ class SettingsNotifier extends Notifier<AppSettings> {
       lastSeenChangelogVersion: prefs.getString(_changelogVersionKey),
       analyticsEnabled: prefs.getBool(_analyticsEnabledKey) ?? true,
       crashReportingEnabled: prefs.getBool(_crashReportingKey) ?? true,
+      speedLimitConfig: SpeedLimitConfig(
+        enabled: prefs.getBool(_speedLimitEnabledKey) ?? false,
+        limitBytesPerSec: prefs.getInt(_speedLimitBytesKey) ?? 0,
+        scheduledLimit: ScheduledSpeedLimit(
+          enabled: prefs.getBool(_scheduledLimitEnabledKey) ?? false,
+          daytimeLimitBytesPerSec: prefs.getInt(_scheduledDayLimitKey) ?? 2 * 1024 * 1024,
+          nighttimeLimitBytesPerSec: prefs.getInt(_scheduledNightLimitKey) ?? 0,
+          dayStartHour: prefs.getInt(_scheduledDayStartKey) ?? 8,
+          nightStartHour: prefs.getInt(_scheduledNightStartKey) ?? 23,
+        ),
+      ),
+      schedulerConfig: SchedulerConfig(
+        enabled: prefs.getBool(_schedulerEnabledKey) ?? false,
+        startTime: prefs.getString(_schedulerStartTimeKey) ?? '22:00',
+        stopTime: prefs.getString(_schedulerStopTimeKey) ?? '06:00',
+        maxConcurrentDownloads: prefs.getInt(_schedulerMaxConcurrentKey) ?? 3,
+        actionOnCompletion: SchedulerAction.fromStorage(
+          prefs.getString(_schedulerActionKey) ?? 'none',
+        ),
+      ),
+      defaultConnectionCount: prefs.getInt(_defaultConnectionCountKey) ?? 4,
+      autoReloadStuck: prefs.getBool(_autoReloadStuckKey) ?? true,
+      categoryAutoOrganize: prefs.getBool(_categoryAutoOrganizeKey) ?? true,
     );
   }
 
@@ -178,6 +237,47 @@ class SettingsNotifier extends Notifier<AppSettings> {
     final prefs = ref.read(sharedPreferencesProvider);
     await prefs.setString(_storagePathKey, path);
     state = state.copyWith(storageRootPath: path);
+  }
+
+  Future<void> setSpeedLimitConfig(SpeedLimitConfig config) async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    await prefs.setBool(_speedLimitEnabledKey, config.enabled);
+    await prefs.setInt(_speedLimitBytesKey, config.limitBytesPerSec);
+    await prefs.setBool(_scheduledLimitEnabledKey, config.scheduledLimit.enabled);
+    await prefs.setInt(_scheduledDayLimitKey, config.scheduledLimit.daytimeLimitBytesPerSec);
+    await prefs.setInt(_scheduledNightLimitKey, config.scheduledLimit.nighttimeLimitBytesPerSec);
+    await prefs.setInt(_scheduledDayStartKey, config.scheduledLimit.dayStartHour);
+    await prefs.setInt(_scheduledNightStartKey, config.scheduledLimit.nightStartHour);
+    state = state.copyWith(speedLimitConfig: config);
+  }
+
+  Future<void> setSchedulerConfig(SchedulerConfig config) async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    await prefs.setBool(_schedulerEnabledKey, config.enabled);
+    await prefs.setString(_schedulerStartTimeKey, config.startTime);
+    await prefs.setString(_schedulerStopTimeKey, config.stopTime);
+    await prefs.setInt(_schedulerMaxConcurrentKey, config.maxConcurrentDownloads);
+    await prefs.setString(_schedulerActionKey, config.actionOnCompletion.storageValue);
+    state = state.copyWith(schedulerConfig: config);
+  }
+
+  Future<void> setDefaultConnectionCount(int count) async {
+    final clamped = count.clamp(1, 16);
+    final prefs = ref.read(sharedPreferencesProvider);
+    await prefs.setInt(_defaultConnectionCountKey, clamped);
+    state = state.copyWith(defaultConnectionCount: clamped);
+  }
+
+  Future<void> setAutoReloadStuck(bool enabled) async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    await prefs.setBool(_autoReloadStuckKey, enabled);
+    state = state.copyWith(autoReloadStuck: enabled);
+  }
+
+  Future<void> setCategoryAutoOrganize(bool enabled) async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    await prefs.setBool(_categoryAutoOrganizeKey, enabled);
+    state = state.copyWith(categoryAutoOrganize: enabled);
   }
 
   ThemeModePreference _readThemeMode(SharedPreferences prefs) {

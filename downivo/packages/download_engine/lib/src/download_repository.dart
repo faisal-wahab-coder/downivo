@@ -169,6 +169,9 @@ class DownloadRepository {
       thumbnailUrl: record.thumbnailUrl,
       platform: record.platform,
       title: record.title,
+      connectionCount: record.connectionCount,
+      checksumSha256: record.checksumSha256,
+      checksumMd5: record.checksumMd5,
     );
   }
 
@@ -198,6 +201,9 @@ class DownloadRepository {
       thumbnailUrl: task.thumbnailUrl,
       platform: task.platform,
       title: task.title,
+      connectionCount: task.connectionCount,
+      checksumSha256: task.checksumSha256,
+      checksumMd5: task.checksumMd5,
     );
   }
 }
