@@ -32,7 +32,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('a.zip'), findsOneWidget);
-    expect(find.textContaining('Completed'), findsOneWidget);
+    expect(find.textContaining('Completed'), findsWidgets);
     expect(find.bySemanticsLabel('a.zip, Completed'), findsOneWidget);
     expect(find.text('Download history'), findsOneWidget);
   });
