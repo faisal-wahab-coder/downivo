@@ -15,6 +15,7 @@ Status is taken from the codebase, [`documentation/25_Roadmap.md`](../documentat
 - M9 `1.0.0` release engineering (R8, signing template, GitHub Actions)
 - `1.1.0` — Save to Gallery, in-app gallery, sixteen social/media resolvers
 - `1.2.0` — What's new dialog (`1.2.0+4` in pubspec)
+- `1.3.0` — SmartDownload controls and Instagram carousel recovery (`1.3.0+5` in pubspec)
 
 ## In Progress
 

@@ -147,3 +147,10 @@ Release engineering: [`RELEASE.md`](RELEASE.md) · [`CHANGELOG.md`](CHANGELOG.md
 - [x] Version `1.2.0+4`
 - [x] What's new dialog after updates (also Settings → About)
 - [x] [`CHANGELOG.md`](CHANGELOG.md) for 1.2.0
+
+**1.3.0 — SmartDownload controls (complete)**
+
+- [x] Version `1.3.0+5`
+- [x] Multi-segment downloads, speed limit, scheduler, stall detection, checksums
+- [x] Instagram carousel slide recovery
+- [x] [`CHANGELOG.md`](CHANGELOG.md) for 1.3.0
