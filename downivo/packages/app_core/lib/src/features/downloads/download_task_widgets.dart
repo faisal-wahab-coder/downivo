@@ -64,16 +64,26 @@ class DownloadProgressDetails extends StatelessWidget {
     _ => null,
   };
 
-  String _statusLabel(DownloadTask task, String pct) => switch (task.status) {
-    DownloadStatus.queued => 'Queued',
-    DownloadStatus.preparing => 'Preparing…',
-    DownloadStatus.downloading => 'Downloading $pct%',
-    DownloadStatus.paused => 'Paused at $pct%',
-    DownloadStatus.completed => 'Completed',
-    DownloadStatus.failed => 'Failed',
-    DownloadStatus.cancelled => 'Cancelled',
-    DownloadStatus.verifying => 'Verifying…',
-  };
+  String _statusLabel(DownloadTask task, String pct) {
+    final connLabel = task.connectionCount > 1
+        ? ' · ${task.connectionCount} connections'
+        : '';
+    final warnLabel = task.isStuck
+        ? ' · ⚠ Stuck (${task.stuckDurationSecs}s)'
+        : task.isSlow
+            ? ' · Slow'
+            : '';
+    return switch (task.status) {
+      DownloadStatus.queued => 'Queued',
+      DownloadStatus.preparing => 'Preparing…',
+      DownloadStatus.downloading => 'Downloading $pct%$connLabel$warnLabel',
+      DownloadStatus.paused => 'Paused at $pct%',
+      DownloadStatus.completed => 'Completed',
+      DownloadStatus.failed => 'Failed',
+      DownloadStatus.cancelled => 'Cancelled',
+      DownloadStatus.verifying => 'Verifying…',
+    };
+  }
 }
 
 class DownloadTrailingActions extends StatelessWidget {
@@ -89,13 +99,27 @@ class DownloadTrailingActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (task.status == DownloadStatus.downloading) {
-      return IconButton(
-        icon: const Icon(Icons.pause),
-        tooltip: 'Pause',
-        onPressed: () {
-          ref.read(analyticsServiceProvider).track(AnalyticsEvent.pauseClicked);
-          pauseDownload(ref, task.id);
-        },
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (task.isStuck || task.isSlow)
+            IconButton(
+              icon: const Icon(Icons.refresh_rounded),
+              tooltip: 'Reload connections',
+              onPressed: () {
+                final manager = ref.read(downloadManagerProvider);
+                manager.reloadConnections(task.id);
+              },
+            ),
+          IconButton(
+            icon: const Icon(Icons.pause),
+            tooltip: 'Pause',
+            onPressed: () {
+              ref.read(analyticsServiceProvider).track(AnalyticsEvent.pauseClicked);
+              pauseDownload(ref, task.id);
+            },
+          ),
+        ],
       );
     }
     if (task.status == DownloadStatus.paused) {
@@ -142,6 +166,17 @@ class DownloadTrailingActions extends StatelessWidget {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (task.checksumSha256 != null)
+            IconButton(
+              icon: const Icon(Icons.verified_user_outlined),
+              tooltip: 'Verify checksum',
+              onPressed: () => ChecksumDialog.show(
+                context,
+                fileName: task.fileName,
+                sha256: task.checksumSha256!,
+                md5: task.checksumMd5 ?? '',
+              ),
+            ),
           IconButton(
             icon: const Icon(Icons.share_outlined),
             tooltip: 'Share',
@@ -183,7 +218,6 @@ class DownloadTaskCard extends StatelessWidget {
     final platformLabel = task.platform?.trim().isNotEmpty == true
         ? task.platform!
         : SocialPlatform.fromUri(Uri.tryParse(task.url) ?? Uri())?.label;
-    final tone = _toneFor(task);
     final pct = (task.progress * 100).clamp(0, 100).toStringAsFixed(0);
     final title = task.title?.trim().isNotEmpty == true
         ? task.title!
@@ -200,6 +234,7 @@ class DownloadTaskCard extends StatelessWidget {
           onTap: onTap != null || canOpen || task.isRemovedFromLibrary
               ? () => _handleTap(context)
               : null,
+          onLongPress: () => _showContextMenu(context),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(
               UdmSpacing.md,
@@ -239,10 +274,16 @@ class DownloadTaskCard extends StatelessWidget {
                         children: [
                           if (platformLabel != null)
                             PlatformBadge(label: platformLabel),
-                          UdmStatusChip(
-                            label: _chipLabel(task, pct),
-                            tone: tone,
+                          DownloadStatusBadge(
+                            status: task.status,
+                            isStuck: task.isStuck,
+                            isSlow: task.isSlow,
                           ),
+                          if (task.connectionCount > 1)
+                            UdmStatusChip(
+                              label: '${task.connectionCount}×',
+                              tone: UdmStatusTone.info,
+                            ),
                           if (task.isRemovedFromLibrary)
                             const UdmStatusChip(
                               label: 'Removed from Files',
@@ -285,17 +326,79 @@ class DownloadTaskCard extends StatelessWidget {
     }
   }
 
-  UdmStatusTone _toneFor(DownloadTask task) {
-    if (task.isRemovedFromLibrary) return UdmStatusTone.caution;
-    return switch (task.status) {
-      DownloadStatus.downloading => UdmStatusTone.progress,
-      DownloadStatus.preparing => UdmStatusTone.info,
-      DownloadStatus.paused ||
-      DownloadStatus.verifying => UdmStatusTone.caution,
-      DownloadStatus.completed => UdmStatusTone.success,
-      DownloadStatus.failed => UdmStatusTone.fault,
-      DownloadStatus.queued || DownloadStatus.cancelled => UdmStatusTone.muted,
-    };
+  void _showContextMenu(BuildContext context) {
+    final manager = ref.read(downloadManagerProvider);
+    final items = <PopupMenuEntry<String>>[];
+
+    if (task.status == DownloadStatus.downloading) {
+      items.add(const PopupMenuItem(value: 'pause', child: Text('Pause')));
+      if (task.isStuck || task.isSlow) {
+        items.add(const PopupMenuItem(
+          value: 'reload',
+          child: Text('Reload connections'),
+        ));
+      }
+    }
+    if (task.status == DownloadStatus.paused) {
+      items.add(const PopupMenuItem(value: 'resume', child: Text('Resume')));
+    }
+    if (task.status == DownloadStatus.failed) {
+      items.add(const PopupMenuItem(value: 'retry', child: Text('Retry')));
+    }
+    if (task.isActive) {
+      items.add(const PopupMenuItem(value: 'cancel', child: Text('Cancel')));
+    }
+    if (task.status == DownloadStatus.completed && task.hasManagedFile) {
+      items.add(const PopupMenuItem(value: 'open', child: Text('Open file')));
+      items.add(const PopupMenuItem(value: 'share', child: Text('Share')));
+      if (task.checksumSha256 != null) {
+        items.add(const PopupMenuItem(
+          value: 'checksum',
+          child: Text('Verify checksum'),
+        ));
+      }
+    }
+
+    if (items.isEmpty) return;
+
+    final overlay =
+        Overlay.of(context).context.findRenderObject()! as RenderBox;
+    final renderBox = context.findRenderObject()! as RenderBox;
+    final position = RelativeRect.fromRect(
+      renderBox.localToGlobal(Offset.zero) & renderBox.size,
+      Offset.zero & overlay.size,
+    );
+
+    showMenu<String>(
+      context: context,
+      position: position,
+      items: items,
+    ).then((value) {
+      if (value == null || !context.mounted) return;
+      switch (value) {
+        case 'pause':
+          pauseDownload(ref, task.id);
+        case 'resume':
+          resumeDownload(ref, task.id);
+        case 'retry':
+          retryDownload(ref, task.id);
+        case 'cancel':
+          cancelDownload(ref, task.id);
+        case 'reload':
+          manager.reloadConnections(task.id);
+        case 'open':
+          _handleTap(context);
+        case 'share':
+          shareManagedMedia(context, ref, path: task.filePath!);
+        case 'checksum':
+          ChecksumDialog.show(
+            context,
+            fileName: task.fileName,
+            sha256: task.checksumSha256!,
+            md5: task.checksumMd5 ?? '',
+          );
+      }
+    });
   }
 
   String _chipLabel(DownloadTask task, String pct) => switch (task.status) {

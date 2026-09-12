@@ -1,0 +1,10 @@
+{
+  "name": "com.smartdownload.manager",
+  "description": "SmartDownload Manager Native Messaging Host",
+  "path": "native_host.exe",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://ogkfpobcjkfkhdjjmjkpkdbkddglopom/",
+    "chrome-extension://jklmofpgpkbheckbbomfjjadknkdopom/"
+  ]
+}
