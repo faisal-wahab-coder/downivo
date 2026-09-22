@@ -1,3 +1,5 @@
+import '../../filename_resolver.dart';
+
 /// Direct media resource discovered from a social or content page URL.
 class DiscoveredResource {
   const DiscoveredResource({
@@ -76,6 +78,28 @@ class DiscoveredResource {
     return '${width}x$height';
   }
 
+  bool get offersAudio =>
+      formats.any((format) => format.track == MediaFormatTrack.audio);
+
+  /// Applies a picker choice: audio saves as an audio file, video stays video.
+  DiscoveredResource withFormat(MediaFormat format) {
+    final audio = format.track == MediaFormatTrack.audio;
+    final mime = format.mimeType ?? mimeType;
+    return copyWith(
+      directUrl: format.url,
+      fileName: FileNameResolver.replaceExtension(fileName, mime),
+      mimeType: mime,
+      width: format.width,
+      height: format.height,
+      clearDimensions: audio,
+      contentLengthBytes: format.extractAudio
+          ? null
+          : (format.sizeBytes ?? contentLengthBytes),
+      clearContentLength: format.extractAudio,
+      kind: audio ? DiscoveredResourceKind.audio : kind,
+    );
+  }
+
   DiscoveredResource copyWith({
     String? directUrl,
     String? fileName,
@@ -89,7 +113,9 @@ class DiscoveredResource {
     double? durationSeconds,
     int? width,
     int? height,
+    bool clearDimensions = false,
     int? contentLengthBytes,
+    bool clearContentLength = false,
     DiscoveredResourceKind? kind,
     List<MediaFormat>? formats,
   }) {
@@ -104,9 +130,11 @@ class DiscoveredResource {
       thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
       author: author ?? this.author,
       durationSeconds: durationSeconds ?? this.durationSeconds,
-      width: width ?? this.width,
-      height: height ?? this.height,
-      contentLengthBytes: contentLengthBytes ?? this.contentLengthBytes,
+      width: clearDimensions ? null : (width ?? this.width),
+      height: clearDimensions ? null : (height ?? this.height),
+      contentLengthBytes: clearContentLength
+          ? null
+          : (contentLengthBytes ?? this.contentLengthBytes),
       kind: kind ?? this.kind,
       formats: formats ?? this.formats,
     );
@@ -143,6 +171,8 @@ enum DiscoveredResourceKind {
       };
 }
 
+enum MediaFormatTrack { video, audio }
+
 /// A selectable download rendition exposed by a resolver.
 class MediaFormat {
   const MediaFormat({
@@ -154,6 +184,8 @@ class MediaFormat {
     this.bitrate,
     this.sizeBytes,
     this.isRecommended = false,
+    this.track = MediaFormatTrack.video,
+    this.extractAudio = false,
   });
 
   final String url;
@@ -164,4 +196,17 @@ class MediaFormat {
   final int? bitrate;
   final int? sizeBytes;
   final bool isRecommended;
+
+  /// Video keeps the picture. Audio saves only the soundtrack.
+  final MediaFormatTrack track;
+
+  /// Download the video file, then copy its audio track into an M4A.
+  final bool extractAudio;
+
+  bool sameChoice(MediaFormat other) {
+    return url == other.url &&
+        track == other.track &&
+        extractAudio == other.extractAudio &&
+        label == other.label;
+  }
 }

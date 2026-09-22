@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
@@ -102,6 +103,19 @@ class MemoryFileStore implements FileStore {
       throw StateError('File not found: $path');
     }
     return Uint8List.fromList(bytes);
+  }
+
+  @override
+  Stream<List<int>> openRead(String path) async* {
+    final bytes = _files[_norm(path)];
+    if (bytes == null) {
+      throw StateError('File not found: $path');
+    }
+    const chunkSize = 64 * 1024;
+    for (var offset = 0; offset < bytes.length; offset += chunkSize) {
+      final end = math.min(offset + chunkSize, bytes.length);
+      yield bytes.sublist(offset, end);
+    }
   }
 
   @override

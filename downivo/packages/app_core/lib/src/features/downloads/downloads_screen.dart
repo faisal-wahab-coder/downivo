@@ -8,6 +8,7 @@ import 'package:shared_types/shared_types.dart';
 
 import '../../providers/analytics_providers.dart';
 import '../../providers/download_providers.dart';
+import '../../providers/settings_provider.dart';
 import 'download_enqueue.dart';
 import 'download_task_widgets.dart';
 import 'download_wizard_dialog.dart';
@@ -127,7 +128,7 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
               ],
               if (_filter.showPreparing && preparing.isNotEmpty) ...[
                 const SizedBox(height: UdmSpacing.lg),
-                UdmSectionLabel(label: 'Preparing (${preparing.length})'),
+                UdmSectionLabel(label: 'Finding video (${preparing.length})'),
                 ...preparing.map(
                   (t) => _DownloadTile(
                     task: t,
@@ -326,7 +327,10 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
 
   Future<void> _showWizard(BuildContext context, WidgetRef ref) async {
     ref.read(analyticsServiceProvider).screen(AnalyticsScreen.urlInput);
-    final result = await DownloadWizardDialog.show(context);
+    final result = await DownloadWizardDialog.show(
+      context,
+      initialFormat: ref.read(settingsProvider).preferredFormat,
+    );
     if (result == null || !context.mounted) return;
 
     await enqueueUrlFlow(
@@ -335,6 +339,7 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
       result.url,
       fileName: result.fileName,
       priority: result.priority,
+      preferredFormat: result.format,
       goToDownloads: false,
     );
   }

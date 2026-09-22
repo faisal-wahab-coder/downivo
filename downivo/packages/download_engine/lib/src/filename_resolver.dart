@@ -13,6 +13,7 @@ class FileNameResolver {
     'video/3gpp': '.3gp',
     'audio/mpeg': '.mp3',
     'audio/mp4': '.m4a',
+    'audio/webm': '.opus',
     'audio/aac': '.aac',
     'audio/wav': '.wav',
     'audio/ogg': '.ogg',
@@ -127,6 +128,19 @@ class FileNameResolver {
     if (p.extension(name).isNotEmpty) return name;
     final ext = extensionFromMime(mimeType) ?? '.bin';
     return '$name$ext';
+  }
+
+  /// Swaps the extension to match [mimeType], keeping the base name.
+  static String replaceExtension(String name, String? mimeType) {
+    final ext = extensionFromMime(mimeType);
+    if (ext == null || ext.isEmpty) return name;
+    final sanitized = sanitize(name);
+    final current = p.extension(sanitized);
+    final base = current.isEmpty
+        ? sanitized
+        : sanitized.substring(0, sanitized.length - current.length);
+    if (base.isEmpty) return 'audio$ext';
+    return '$base$ext';
   }
 
   static String? extensionFromMime(String? mimeType) {

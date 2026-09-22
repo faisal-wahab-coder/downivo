@@ -70,7 +70,7 @@ flutter build apk --release
 Outputs:
 
 - AAB: `build/app/outputs/bundle/release/app-release.aab`
-- APK: `build/app/outputs/flutter-apk/app-release.apk`
+- APK: `build/app/outputs/flutter-apk/downivo-<version>-<build>.apk` (script) or `app-release.apk` (raw Flutter command)
 - ProGuard mapping: `build/app/outputs/mapping/release/mapping.txt` (upload to Play Console)
 
 ## CI/CD

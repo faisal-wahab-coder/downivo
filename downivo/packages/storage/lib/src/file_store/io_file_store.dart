@@ -53,6 +53,9 @@ class IoFileStore implements FileStore {
   Future<Uint8List> readBytes(String path) => File(path).readAsBytes();
 
   @override
+  Stream<List<int>> openRead(String path) => File(path).openRead();
+
+  @override
   Future<void> copy(String from, String to) async {
     final target = File(to);
     await target.parent.create(recursive: true);

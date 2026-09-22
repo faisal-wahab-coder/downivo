@@ -77,6 +77,21 @@ class SegmentDownloadWorker {
       cancelToken: _cancelToken,
     );
 
+    if (response.statusCode != 206) {
+      final subscription = response.data?.stream.listen(
+        (_) {},
+        onError: (_) {},
+        cancelOnError: true,
+      );
+      await subscription?.cancel();
+      throw DioException(
+        requestOptions: response.requestOptions,
+        response: response,
+        type: DioExceptionType.badResponse,
+        message: 'Server did not honor the Range request',
+      );
+    }
+
     final sink = fileStore.openWrite(segmentFilePath, append: existingBytes > 0);
     var downloaded = existingBytes;
     var lastTick = DateTime.now();
@@ -86,9 +101,9 @@ class SegmentDownloadWorker {
       await for (final chunk in response.data!.stream) {
         if (_cancelled) break;
 
-        // Apply speed limiting if configured.
-        if (speedLimiter != null) {
-          await speedLimiter!.throttle(chunk.length);
+        final limiter = speedLimiter;
+        if (limiter != null && limiter.isActive) {
+          await limiter.acquire(chunk.length);
         }
 
         sink.add(chunk);
@@ -144,9 +159,9 @@ Future<void> mergeSegmentFiles({
   final sink = fileStore.openWrite(outputPath);
   try {
     for (final segPath in segmentPaths) {
-      if (await fileStore.exists(segPath)) {
-        final bytes = await fileStore.readBytes(segPath);
-        sink.add(bytes);
+      if (!await fileStore.exists(segPath)) continue;
+      await for (final chunk in fileStore.openRead(segPath)) {
+        sink.add(chunk);
       }
     }
   } finally {

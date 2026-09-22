@@ -256,27 +256,55 @@ var ytInitialPlayerResponse = {
       expect(resource.formats.where((f) => f.isRecommended), hasLength(1));
     });
 
-    test('YT-CAP-002 no audio-only extraction path exists', () {
-      // The preferred itags [22, 18, 37] are muxed video+audio.
-      // [136, 135, 134] are video-only adaptive streams.
-      // There are no audio-only itags (140, 251) in the preferred list.
-      // Audio-only download is NOT supported.
-      const preferredItags = [22, 18, 37, 136, 135, 134, 399, 401, 313];
-      const audioOnlyItags = [140, 251, 249, 250];
-      final hasAudioOnly =
-          preferredItags.any((i) => audioOnlyItags.contains(i));
-      expect(hasAudioOnly, isFalse,
-          reason: 'No audio-only itags in preferred list');
-    });
+    test('YT-CAP-002 saves M4A from the muxed video and hides blocked audio URLs', () {
+      final formats = YouTubeResolver.formatsFromStreamingDataForTest({
+        'formats': [
+          {
+            'url': 'https://rr1.googlevideo.com/videoplayback?itag=22',
+            'itag': 22,
+            'mimeType': 'video/mp4; codecs="avc1.64001F, mp4a.40.2"',
+            'qualityLabel': '720p',
+            'height': 720,
+          },
+        ],
+        'adaptiveFormats': [
+          {
+            'url': 'https://rr1.googlevideo.com/videoplayback?itag=136',
+            'itag': 136,
+            'mimeType': 'video/mp4; codecs="avc1.4d401f"',
+            'qualityLabel': '720p',
+            'height': 720,
+          },
+          {
+            'url': 'https://rr1.googlevideo.com/videoplayback?itag=140',
+            'itag': 140,
+            'mimeType': 'audio/mp4; codecs="mp4a.40.2"',
+            'bitrate': 128000,
+            'contentLength': '1000',
+          },
+          {
+            'url': 'https://rr1.googlevideo.com/videoplayback?itag=139',
+            'itag': 139,
+            'mimeType': 'audio/mp4; codecs="mp4a.40.2"',
+            'bitrate': 48000,
+          },
+          {
+            'url': 'https://rr1.googlevideo.com/videoplayback?itag=251',
+            'itag': 251,
+            'mimeType': 'audio/webm; codecs="opus"',
+            'bitrate': 160000,
+          },
+        ],
+      });
 
-    test('YT-CAP-003 no muxing/merging pipeline exists', () {
-      // The DownloadManager downloads a single stream URL.
-      // There is no ffmpeg/muxer integration for combining separate
-      // audio and video streams.
-      // This documents the limitation.
-      expect(true, isTrue,
-          reason:
-              'Documenting: no muxing pipeline exists in current codebase');
+      expect(formats.map((format) => format.label), ['720p', 'M4A']);
+      expect(formats.where((format) => format.url.contains('itag=136')), isEmpty);
+      expect(formats.where((format) => format.url.contains('itag=140')), isEmpty);
+      expect(formats.where((format) => format.url.contains('itag=251')), isEmpty);
+      expect(formats.last.track, MediaFormatTrack.audio);
+      expect(formats.last.mimeType, 'audio/mp4');
+      expect(formats.last.extractAudio, isTrue);
+      expect(formats.last.url, contains('itag=22'));
     });
   });
 

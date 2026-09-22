@@ -94,7 +94,7 @@ class DownloadStatusBadge extends StatelessWidget {
           false
         ),
       DownloadStatus.preparing => (
-          'Preparing',
+          'Finding video',
           UdmColors.signalCyan,
           Icons.hourglass_top_rounded,
           true

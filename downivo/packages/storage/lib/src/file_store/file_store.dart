@@ -20,6 +20,9 @@ abstract class FileStore {
 
   Future<Uint8List> readBytes(String path);
 
+  /// Reads [path] in chunks so large files are not loaded all at once.
+  Stream<List<int>> openRead(String path);
+
   Future<void> copy(String from, String to);
 
   Future<void> rename(String from, String to);

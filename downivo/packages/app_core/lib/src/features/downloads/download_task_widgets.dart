@@ -75,7 +75,7 @@ class DownloadProgressDetails extends StatelessWidget {
             : '';
     return switch (task.status) {
       DownloadStatus.queued => 'Queued',
-      DownloadStatus.preparing => 'Preparing…',
+      DownloadStatus.preparing => 'Finding video…',
       DownloadStatus.downloading => 'Downloading $pct%$connLabel$warnLabel',
       DownloadStatus.paused => 'Paused at $pct%',
       DownloadStatus.completed => 'Completed',
@@ -403,7 +403,7 @@ class DownloadTaskCard extends StatelessWidget {
 
   String _chipLabel(DownloadTask task, String pct) => switch (task.status) {
     DownloadStatus.queued => 'Queued',
-    DownloadStatus.preparing => 'Preparing',
+    DownloadStatus.preparing => 'Finding video',
     DownloadStatus.downloading => 'Downloading',
     DownloadStatus.paused => 'Paused',
     DownloadStatus.completed => 'Completed',

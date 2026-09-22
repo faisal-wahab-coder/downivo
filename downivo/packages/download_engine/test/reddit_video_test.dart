@@ -16,6 +16,13 @@ void main() {
       expect(result, isNotNull);
       expect(result!.directUrl, contains('DASH_720.mp4'));
       expect(result.mimeType, 'video/mp4');
+      expect(
+        result.formats.map((format) => format.label),
+        ['Video', 'M4A'],
+      );
+      expect(result.formats.last.url, contains('DASH_audio.mp4'));
+      expect(result.formats.last.track, MediaFormatTrack.audio);
+      expect(result.formats.last.extractAudio, isFalse);
     });
 
     test('RD-VID-002 thumbnail is extracted from preview', () {

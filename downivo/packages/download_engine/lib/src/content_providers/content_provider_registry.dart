@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../web_request_proxy.dart';
 import 'dailymotion_uri.dart';
+import 'audio_download_option.dart';
 import 'models/discovered_resource.dart';
 import 'media_extractor.dart';
 import 'platform_social_resolver.dart';
@@ -30,7 +31,9 @@ class ContentProviderRegistry {
 
     final fromPlatform = await _platformResolver.discover(pageUrl, platform);
     if (fromPlatform != null) {
-      return fromPlatform.copyWith(pageUrl: pageUrl.toString());
+      return AudioDownloadOption.decorate(
+        fromPlatform.copyWith(pageUrl: pageUrl.toString()),
+      );
     }
 
     if (platform == SocialPlatform.reddit &&
@@ -98,7 +101,9 @@ class ContentProviderRegistry {
         platform: platform,
       );
       if (discovered != null) {
-        return discovered.copyWith(pageUrl: pageUrl.toString());
+        return AudioDownloadOption.decorate(
+          discovered.copyWith(pageUrl: pageUrl.toString()),
+        );
       }
     }
     return null;
@@ -113,9 +118,10 @@ class ContentProviderRegistry {
 
     final fromPlatform = await _platformResolver.discoverAll(pageUrl, platform);
     if (fromPlatform.isNotEmpty) {
-      return fromPlatform
-          .map((r) => r.copyWith(pageUrl: pageUrl.toString()))
-          .toList();
+      return AudioDownloadOption.decorateAll([
+        for (final resource in fromPlatform)
+          resource.copyWith(pageUrl: pageUrl.toString()),
+      ]);
     }
 
     if (platform == SocialPlatform.reddit &&
@@ -184,7 +190,11 @@ class ContentProviderRegistry {
         platform: platform,
       );
       if (discovered != null) {
-        return [discovered.copyWith(pageUrl: pageUrl.toString())];
+        return [
+          AudioDownloadOption.decorate(
+            discovered.copyWith(pageUrl: pageUrl.toString()),
+          ),
+        ];
       }
     }
     return const [];

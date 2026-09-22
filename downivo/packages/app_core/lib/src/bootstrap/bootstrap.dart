@@ -102,6 +102,17 @@ Future<ProviderContainer> bootstrap() async {
       analyticsServiceProvider.overrideWithValue(analytics),
     ],
   );
+  containerRef.listen<AppSettings>(
+    settingsProvider,
+    (_, next) {
+      downloadManager.applyRuntimeSettings(
+        connectionCount: next.defaultConnectionCount,
+        speedLimit: next.speedLimitConfig,
+        autoReloadStuck: next.autoReloadStuck,
+      );
+    },
+    fireImmediately: true,
+  );
 
   startupStopwatch.stop();
   containerRef.read(performanceManagerProvider).recordStartup(

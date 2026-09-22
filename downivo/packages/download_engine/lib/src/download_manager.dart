@@ -14,6 +14,7 @@ import 'content_providers/dailymotion_resolver.dart';
 import 'content_providers/dailymotion_uri.dart';
 import 'content_providers/facebook_resolver.dart';
 import 'content_providers/hls_fmp4_stitcher.dart';
+import 'content_providers/mp4_audio_extractor.dart';
 import 'content_providers/instagram_graphql_resolver.dart';
 import 'content_providers/social_http_headers.dart';
 import 'content_providers/social_platform.dart';
@@ -29,6 +30,7 @@ import 'download_repository.dart';
 import 'filename_resolver.dart';
 import 'models/download_task.dart';
 import 'range_response_parser.dart';
+import 'segment_download_worker.dart';
 import 'speed_limiter.dart';
 import 'stall_detector.dart';
 import 'web_request_proxy.dart';
@@ -38,8 +40,14 @@ typedef DownloadProgressCallback = void Function(DownloadTask task);
 /// Default number of parallel connections for multi-segment downloads.
 const kDefaultConnectionCount = 4;
 
+/// Upper bound for parallel range connections on one file.
+const kMaxSegmentConnections = 8;
+
 /// Minimum file size (in bytes) to use multi-segment downloads (1 MB).
 const kMinSegmentFileSize = 1024 * 1024;
+
+/// How often transfer progress, speed, and stall state are published.
+const kTransferSampleInterval = Duration(milliseconds: 250);
 
 /// Orchestrates validation, queueing, execution, and persistence.
 class DownloadManager {
@@ -90,12 +98,27 @@ class DownloadManager {
   final _queueOrder = <String>[];
   final _requestHeaders = <String, Map<String, String>>{};
   final _downloadStartedAt = <String, DateTime>{};
+  final _stallReloadIds = <String>{};
   final _progressController = StreamController<List<DownloadTask>>.broadcast();
   final _emitGate = ThrottleGate(interval: const Duration(milliseconds: 250));
 
   int get defaultConnectionCount => _defaultConnectionCount;
   set defaultConnectionCount(int value) {
-    _defaultConnectionCount = value.clamp(1, 16);
+    _defaultConnectionCount = value.clamp(1, kMaxSegmentConnections);
+  }
+
+  int get _segmentConnectionCount =>
+      _defaultConnectionCount.clamp(1, kMaxSegmentConnections);
+
+  /// Applies connection count, bandwidth cap, and stall reload from settings.
+  void applyRuntimeSettings({
+    required int connectionCount,
+    required SpeedLimitConfig speedLimit,
+    required bool autoReloadStuck,
+  }) {
+    defaultConnectionCount = connectionCount;
+    speedLimiter.updateConfig(speedLimit);
+    stallDetector.config = StallDetectorConfig(autoReloadStuck: autoReloadStuck);
   }
 
   Stream<List<DownloadTask>> get tasksStream => _progressController.stream;
@@ -167,6 +190,7 @@ class DownloadManager {
     String? title,
     String? mimeType,
     Map<String, String>? requestHeaders,
+    DownloadStatus initialStatus = DownloadStatus.queued,
   }) async {
     final validator = UrlValidator();
     final result = validator.validate(url);
@@ -183,7 +207,7 @@ class DownloadManager {
       id: _uuid.v4(),
       url: uri.toString(),
       fileName: resolvedName.isNotEmpty ? resolvedName : 'download_pending',
-      status: DownloadStatus.queued,
+      status: initialStatus,
       progress: 0,
       priority: priority,
       createdAt: now,
@@ -199,11 +223,65 @@ class DownloadManager {
       _requestHeaders[task.id] = requestHeaders;
     }
     _queueOrder.add(task.id);
+    _emit();
     await _repository.save(task);
     await _persistQueueOrder();
-    _emit();
-    unawaited(_processQueue());
+    if (task.status == DownloadStatus.queued) {
+      unawaited(_processQueue());
+    }
     return task;
+  }
+
+  /// Replaces a Preparing row with the resolved file and starts the transfer.
+  Future<void> startPreparedDownload(
+    String id, {
+    required String url,
+    String? fileName,
+    String? thumbnailUrl,
+    String? platform,
+    String? title,
+    String? mimeType,
+    Map<String, String>? requestHeaders,
+  }) async {
+    final task = _tasks[id];
+    if (task == null || _isAbandoned(id)) return;
+    if (task.status != DownloadStatus.preparing) return;
+    if (requestHeaders != null && requestHeaders.isNotEmpty) {
+      _requestHeaders[id] = requestHeaders;
+    }
+    await _updateTask(
+      task.copyWith(
+        url: url,
+        fileName: fileName,
+        thumbnailUrl: thumbnailUrl,
+        platform: platform,
+        title: title,
+        mimeType: mimeType,
+        status: DownloadStatus.queued,
+        clearError: true,
+        updatedAt: DateTime.now(),
+      ),
+    );
+    unawaited(_processQueue());
+  }
+
+  /// Marks a not-yet-started download as failed and shows the error on the row.
+  Future<void> failDownload(String id, String message) async {
+    final task = _tasks[id];
+    if (task == null || _isAbandoned(id)) return;
+    if (task.status != DownloadStatus.preparing &&
+        task.status != DownloadStatus.queued) {
+      return;
+    }
+    _queueOrder.remove(id);
+    await _updateTask(
+      task.copyWith(
+        status: DownloadStatus.failed,
+        errorMessage: message,
+        updatedAt: DateTime.now(),
+      ),
+    );
+    await _persistQueueOrder();
   }
 
   void setMaxConcurrent(int value) {
@@ -328,6 +406,7 @@ class DownloadManager {
       } on Object {
         // Cancel still succeeds if the partial file cannot be deleted.
       }
+      await _deleteSegmentParts(path, _partSlotCount(task));
     }
 
     final cancelled = task.copyWith(
@@ -411,7 +490,6 @@ class DownloadManager {
     final activeCount = _tasks.values
         .where((t) => t.status == DownloadStatus.downloading)
         .length;
-    speedLimiter.setActiveDownloads(activeCount.clamp(1, 100));
     if (activeCount >= maxConcurrent) return;
 
     final next = _queuedTasksSorted();
@@ -445,9 +523,15 @@ class DownloadManager {
     FileStoreSink? sink;
 
     try {
+      final pageUri = Uri.parse(task.url);
+      final resolvingPage = ContentProviderRegistry.canHandle(pageUri) &&
+          !SnapchatUri.isDirectMediaHost(pageUri.host) &&
+          !HlsFmp4Stitcher.isPlaylistUrl(task.url);
       await _updateTask(
         task.copyWith(
-          status: DownloadStatus.downloading,
+          status: resolvingPage
+              ? DownloadStatus.preparing
+              : DownloadStatus.downloading,
           updatedAt: DateTime.now(),
         ),
       );
@@ -503,7 +587,12 @@ class DownloadManager {
           if (latest == null || _isAbandoned(task.id)) return;
           await _updateTask(
             latest.copyWith(
+              status: DownloadStatus.downloading,
               fileName: discovered.fileName,
+              thumbnailUrl: discovered.thumbnailUrl ?? latest.thumbnailUrl,
+              title: discovered.title ?? latest.title,
+              mimeType: discovered.mimeType ?? latest.mimeType,
+              platform: discovered.platform,
               updatedAt: DateTime.now(),
             ),
           );
@@ -532,16 +621,17 @@ class DownloadManager {
         }
       }
 
-      var existingBytes = await _bytesOnDisk(task);
+      var existingBytes = await _contiguousFileBytes(task);
+      final current = _tasks[task.id] ?? task;
+      // CDN hosts (tiktokcdn, googlevideo, scontent) are not page hosts, so
+      // the platform has to come from the task. Without it the request is
+      // sent as a generic file and those CDNs answer 403.
       final platform =
           SocialPlatform.fromUri(uri) ??
-          (task.platform == SocialPlatform.dailymotion.label
-              ? SocialPlatform.dailymotion
-              : null);
+          SocialPlatform.fromLabel(current.platform);
       final headerPageUrl =
-          platform == SocialPlatform.dailymotion &&
-              !DailymotionUri.isHost(uri.host)
-          ? Uri.parse('https://www.dailymotion.com/')
+          platform != null && SocialPlatform.fromUri(uri) != platform
+          ? SocialHttpHeaders.mediaPageUri(platform)
           : uri;
       var downloadHeaders = {
         ...SocialHttpHeaders.forMediaDownload(
@@ -569,6 +659,17 @@ class DownloadManager {
         },
       );
       if (_isAbandoned(task.id)) return;
+
+      if (await _maybeDownloadSegmented(
+        task: task,
+        downloadUrl: downloadUrl,
+        preferredName: resolvedPreferredName,
+        headers: downloadHeaders,
+        cancelToken: cancelToken,
+        contiguousBytes: existingBytes,
+      )) {
+        return;
+      }
 
       if (_shouldStitchDailymotionHls(task, uri, downloadUrl)) {
         await _downloadDailymotionHls(
@@ -621,13 +722,14 @@ class DownloadManager {
       final statusCode = response.statusCode ?? 200;
       final contentType = response.headers.value('content-type');
       final contentRange = response.headers.value('content-range');
+      final savedType = _contentTypeForSave(task, contentType);
       final fileName = FileNameResolver.resolve(
         uri: Uri.parse(downloadUrl),
         preferredName: resolvedPreferredName,
         contentDisposition: response.headers.value('content-disposition'),
-        contentType: contentType,
+        contentType: savedType,
       );
-      final category = _categoryForMime(contentType, fileName);
+      final category = _categoryForMime(savedType, fileName);
       final dirPath = _storagePaths.categoryPath(category);
       if (!await _fileStore.directoryExists(dirPath)) {
         await _fileStore.createDirectory(dirPath);
@@ -657,56 +759,45 @@ class DownloadManager {
       sink = _fileStore.openWrite(filePath, append: existingBytes > 0);
 
       var received = existingBytes;
-      var lastTick = DateTime.now();
-      var lastReceived = received;
       var workingTask = task.copyWith(
         status: DownloadStatus.downloading,
         fileName: fileName,
         filePath: filePath,
         fileSize: totalBytes,
-        mimeType: contentType,
+        mimeType: savedType,
         bytesReceived: received,
         progress: totalBytes != null && totalBytes > 0
             ? received / totalBytes
             : task.progress,
       );
 
-      await for (final chunk in response.data!.stream) {
-        // Apply speed limiter throttling.
-        await speedLimiter.throttle(chunk.length);
-
-        sink.add(chunk);
-        received += chunk.length;
-        final now = DateTime.now();
-        final elapsed = now.difference(lastTick).inMilliseconds;
-        var speed = 0;
-        if (elapsed >= 500) {
-          speed = ((received - lastReceived) * 1000 / elapsed).round();
-          lastTick = now;
-          lastReceived = received;
-        }
-        final total = totalBytes ?? received;
-        final progress = total > 0 ? received / total : 0.0;
-        workingTask = workingTask.copyWith(
-          progress: progress.clamp(0, 1),
-          bytesReceived: received,
-          speedBytesPerSec: speed,
-          updatedAt: now,
-        );
-        // Evaluate stall/slow status.
-        workingTask = stallDetector.evaluate(workingTask, speed);
-        await _updateTask(workingTask, persist: false);
-      }
+      final pumped = await _pumpStream(
+        stream: response.data!.stream,
+        sink: sink,
+        initialReceived: received,
+        totalBytes: totalBytes,
+        task: workingTask,
+        cancelToken: cancelToken,
+      );
+      received = pumped.received;
+      workingTask = pumped.task;
 
       await sink.flush();
       await sink.close();
       sink = null;
+
+      if (await _finishStallReloadIfNeeded(task.id)) return;
+      if (_isAbandoned(task.id)) return;
 
       final verified = await _verifyDownload(workingTask, received);
       if (!verified) {
         await _handleFailure(workingTask, 'File integrity check failed');
         return;
       }
+
+      final saved = await _saveAudioEdition(workingTask);
+      if (saved == null) return;
+      workingTask = saved;
 
       _queueOrder.remove(task.id);
       _requestHeaders.remove(task.id);
@@ -717,8 +808,8 @@ class DownloadManager {
         workingTask.copyWith(
           status: DownloadStatus.completed,
           progress: 1,
-          bytesReceived: received,
-          fileSize: totalBytes ?? received,
+          bytesReceived: workingTask.bytesReceived,
+          fileSize: workingTask.fileSize ?? workingTask.bytesReceived,
           isStuck: false,
           isSlow: false,
           stuckDurationSecs: 0,
@@ -727,11 +818,12 @@ class DownloadManager {
       );
       _emitDownloadCompleted(
         task,
-        bytes: totalBytes ?? received,
+        bytes: workingTask.fileSize ?? workingTask.bytesReceived,
         speed: workingTask.speedBytesPerSec,
       );
     } on DioException catch (error) {
       if (CancelToken.isCancel(error)) {
+        await _finishStallReloadIfNeeded(task.id);
         return;
       }
       telemetry.log(
@@ -767,6 +859,370 @@ class DownloadManager {
       _cancelTokens.remove(task.id);
       _runningIds.remove(task.id);
       unawaited(_processQueue());
+    }
+  }
+
+  Future<({int received, DownloadTask task})> _pumpStream({
+    required Stream<List<int>> stream,
+    required FileStoreSink sink,
+    required int initialReceived,
+    required int? totalBytes,
+    required DownloadTask task,
+    required CancelToken cancelToken,
+  }) async {
+    var received = initialReceived;
+    var workingTask = task;
+    var lastTick = DateTime.now();
+    var lastReceived = received;
+
+    await for (final chunk in stream) {
+      if (speedLimiter.isActive) {
+        await speedLimiter.acquire(chunk.length);
+      }
+      if (_isAbandoned(task.id)) break;
+      sink.add(chunk);
+      received += chunk.length;
+      final now = DateTime.now();
+      final elapsed = now.difference(lastTick).inMilliseconds;
+      if (elapsed < kTransferSampleInterval.inMilliseconds) continue;
+      final speed = ((received - lastReceived) * 1000 / elapsed).round();
+      lastTick = now;
+      lastReceived = received;
+      workingTask = await _publishTransferProgress(
+        task: workingTask,
+        received: received,
+        totalBytes: totalBytes,
+        speedBytesPerSec: speed,
+      );
+      if (stallDetector.shouldAutoReload(workingTask)) {
+        _stallReloadIds.add(task.id);
+        cancelToken.cancel('stall_reload');
+        break;
+      }
+    }
+    return (received: received, task: workingTask);
+  }
+
+  Future<DownloadTask> _publishTransferProgress({
+    required DownloadTask task,
+    required int received,
+    required int? totalBytes,
+    required int speedBytesPerSec,
+    List<DownloadSegment>? segments,
+  }) async {
+    final total = totalBytes ?? received;
+    final progress = total > 0 ? (received / total).clamp(0.0, 1.0) : 0.0;
+    final updated = stallDetector.evaluate(
+      task.copyWith(
+        progress: progress,
+        bytesReceived: received,
+        speedBytesPerSec: speedBytesPerSec,
+        segments: segments,
+        updatedAt: DateTime.now(),
+      ),
+      speedBytesPerSec,
+    );
+    await _updateTask(updated, persist: false);
+    return updated;
+  }
+
+  /// Downloads with parallel ranges when the file is large enough.
+  ///
+  /// Returns true when this method owns the outcome, including a fallback
+  /// that must not continue into the single-connection GET.
+  Future<bool> _maybeDownloadSegmented({
+    required DownloadTask task,
+    required String downloadUrl,
+    required String? preferredName,
+    required Map<String, String> headers,
+    required CancelToken cancelToken,
+    required int contiguousBytes,
+  }) async {
+    if (HlsFmp4Stitcher.isPlaylistUrl(downloadUrl)) return false;
+    if (_segmentConnectionCount <= 1 || contiguousBytes > 0) return false;
+    final hasParts = await _sumSegmentParts(task) > 0;
+    if (!hasParts && _preferSingleConnection(downloadUrl)) return false;
+    if (_isAbandoned(task.id)) return true;
+
+    final probe = await _probeRange(
+      url: downloadUrl,
+      headers: headers,
+      parentToken: cancelToken,
+    );
+    if (_isAbandoned(task.id)) return true;
+    final totalBytes = probe?.totalBytes;
+    if (probe == null ||
+        !probe.acceptsRange ||
+        totalBytes == null ||
+        totalBytes < kMinSegmentFileSize) {
+      return false;
+    }
+
+    final connections = _segmentConnectionCount;
+    final savedType = _contentTypeForSave(task, probe.contentType);
+    final fileName = FileNameResolver.resolve(
+      uri: Uri.parse(downloadUrl),
+      preferredName: preferredName,
+      contentDisposition: probe.contentDisposition,
+      contentType: savedType,
+    );
+    final category = _categoryForMime(savedType, fileName);
+    final dirPath = _storagePaths.categoryPath(category);
+    if (!await _fileStore.directoryExists(dirPath)) {
+      await _fileStore.createDirectory(dirPath);
+    }
+    final filePath = task.filePath ?? p.join(dirPath, fileName);
+    if (task.connectionCount > 1 && task.connectionCount != connections) {
+      await _deleteSegmentParts(filePath, task.connectionCount);
+    }
+
+    final planned = DownloadSegment.createSegments(totalBytes, connections);
+    final downloaded = List<int>.filled(planned.length, 0);
+    for (var index = 0; index < planned.length; index++) {
+      final partPath = _segmentPartPath(filePath, index);
+      if (!await _fileStore.exists(partPath)) continue;
+      final length = await _fileStore.length(partPath);
+      final segmentTotal = planned[index].totalBytes;
+      if (length > segmentTotal) {
+        await _fileStore.delete(partPath);
+        continue;
+      }
+      downloaded[index] = length;
+    }
+
+    var workingTask = task.copyWith(
+      status: DownloadStatus.downloading,
+      fileName: fileName,
+      filePath: filePath,
+      fileSize: totalBytes,
+      mimeType: savedType,
+      connectionCount: connections,
+      bytesReceived: downloaded.fold<int>(0, (sum, value) => sum + value),
+      segments: [
+        for (var index = 0; index < planned.length; index++)
+          planned[index].copyWith(downloadedBytes: downloaded[index]),
+      ],
+      updatedAt: DateTime.now(),
+    );
+    await _updateTask(workingTask);
+
+    final workers = <SegmentDownloadWorker>[];
+    cancelToken.whenCancel.then((_) {
+      for (final worker in workers) {
+        worker.cancel();
+      }
+    });
+    for (final segment in planned) {
+      workers.add(
+        SegmentDownloadWorker(
+          segment: segment,
+          url: downloadUrl,
+          headers: headers,
+          dio: _dio,
+          fileStore: _fileStore,
+          segmentFilePath: _segmentPartPath(filePath, segment.id),
+          speedLimiter: speedLimiter,
+          onProgress: (segmentId, bytes, _, _) {
+            if (segmentId < 0 || segmentId >= downloaded.length) return;
+            downloaded[segmentId] = bytes;
+          },
+        ),
+      );
+    }
+
+    var stopped = false;
+    var lastTick = DateTime.now();
+    var lastReceived = workingTask.bytesReceived;
+    final timer = Timer.periodic(kTransferSampleInterval, (_) {
+      if (stopped || _isAbandoned(task.id)) return;
+      final received = downloaded.fold<int>(0, (sum, value) => sum + value);
+      final now = DateTime.now();
+      final elapsed = now.difference(lastTick).inMilliseconds;
+      if (elapsed <= 0) return;
+      final speed = ((received - lastReceived) * 1000 / elapsed).round();
+      lastTick = now;
+      lastReceived = received;
+      final segments = <DownloadSegment>[
+        for (var index = 0; index < planned.length; index++)
+          planned[index].copyWith(
+            downloadedBytes: downloaded[index],
+            status: downloaded[index] >= planned[index].totalBytes
+                ? SegmentStatus.completed
+                : SegmentStatus.downloading,
+          ),
+      ];
+      unawaited(() async {
+        workingTask = await _publishTransferProgress(
+          task: workingTask,
+          received: received,
+          totalBytes: totalBytes,
+          speedBytesPerSec: speed,
+          segments: segments,
+        );
+        if (stopped || !stallDetector.shouldAutoReload(workingTask)) return;
+        _stallReloadIds.add(task.id);
+        cancelToken.cancel('stall_reload');
+      }());
+    });
+
+    try {
+      await Future.wait(workers.map((worker) => worker.start()));
+    } on DioException catch (error) {
+      for (final worker in workers) {
+        worker.cancel();
+      }
+      if (CancelToken.isCancel(error) ||
+          cancelToken.isCancelled ||
+          _isAbandoned(task.id)) {
+        await _finishStallReloadIfNeeded(task.id);
+        return true;
+      }
+      await _handleFailure(
+        workingTask,
+        DownloadErrorFormatter.fromDio(error),
+        retryable: !DownloadErrorFormatter.isPermanent(error),
+      );
+      return true;
+    } on Object catch (error) {
+      for (final worker in workers) {
+        worker.cancel();
+      }
+      if (_isAbandoned(task.id)) return true;
+      await _handleFailure(
+        workingTask,
+        DownloadErrorFormatter.fromObject(error),
+      );
+      return true;
+    } finally {
+      stopped = true;
+      timer.cancel();
+    }
+
+    if (await _finishStallReloadIfNeeded(task.id)) return true;
+    if (_isAbandoned(task.id)) return true;
+
+    final received = downloaded.fold<int>(0, (sum, value) => sum + value);
+    if (received != totalBytes) {
+      await _handleFailure(
+        workingTask.copyWith(
+          filePath: filePath,
+          fileSize: totalBytes,
+          bytesReceived: received,
+        ),
+        'Segmented download ended before the file was complete',
+      );
+      return true;
+    }
+
+    try {
+      await mergeSegmentFiles(
+        fileStore: _fileStore,
+        outputPath: filePath,
+        segmentPaths: [
+          for (var index = 0; index < planned.length; index++)
+            _segmentPartPath(filePath, index),
+        ],
+      );
+    } on Object catch (error) {
+      await _handleFailure(
+        workingTask,
+        DownloadErrorFormatter.fromObject(error),
+      );
+      return true;
+    }
+
+    workingTask = workingTask.copyWith(
+      filePath: filePath,
+      fileSize: totalBytes,
+      bytesReceived: received,
+      connectionCount: connections,
+      segments: [
+        for (final segment in planned)
+          segment.copyWith(
+            downloadedBytes: segment.totalBytes,
+            status: SegmentStatus.completed,
+          ),
+      ],
+    );
+    final verified = await _verifyDownload(workingTask, received);
+    if (!verified) {
+      await _handleFailure(workingTask, 'File integrity check failed');
+      return true;
+    }
+
+    final saved = await _saveAudioEdition(workingTask);
+    if (saved == null) return true;
+    workingTask = saved;
+
+    _queueOrder.remove(task.id);
+    _requestHeaders.remove(task.id);
+    stallDetector.clear(task.id);
+    await _persistQueueOrder();
+    await _updateTask(
+      workingTask.copyWith(
+        status: DownloadStatus.completed,
+        progress: 1,
+        bytesReceived: workingTask.bytesReceived,
+        fileSize: workingTask.fileSize ?? workingTask.bytesReceived,
+        isStuck: false,
+        isSlow: false,
+        stuckDurationSecs: 0,
+        updatedAt: DateTime.now(),
+      ),
+    );
+    _emitDownloadCompleted(
+      task,
+      bytes: workingTask.fileSize ?? workingTask.bytesReceived,
+      speed: workingTask.speedBytesPerSec,
+    );
+    return true;
+  }
+
+  Future<_RangeProbe?> _probeRange({
+    required String url,
+    required Map<String, String> headers,
+    required CancelToken parentToken,
+  }) async {
+    if (parentToken.isCancelled) return null;
+    final probeToken = CancelToken();
+    unawaited(
+      parentToken.whenCancel.then((_) {
+        if (!probeToken.isCancelled) probeToken.cancel('cancelled');
+      }),
+    );
+    try {
+      final response = await _dio.get<ResponseBody>(
+        url,
+        options: Options(
+          responseType: ResponseType.stream,
+          followRedirects: true,
+          headers: {...headers, 'Range': 'bytes=0-0'},
+          validateStatus: (status) =>
+              status != null &&
+              (status == 200 || status == 206 || status == 416),
+        ),
+        cancelToken: probeToken,
+      );
+      final status = response.statusCode ?? 0;
+      final total = status == 206
+          ? RangeResponseParser.totalBytesFromContentRange(
+              response.headers.value('content-range'),
+            )
+          : int.tryParse(response.headers.value('content-length') ?? '');
+      response.data?.stream.listen(
+        (_) {},
+        onError: (_) {},
+        cancelOnError: true,
+      );
+      if (!probeToken.isCancelled) probeToken.cancel('probe_done');
+      return _RangeProbe(
+        totalBytes: total,
+        contentType: response.headers.value('content-type'),
+        contentDisposition: response.headers.value('content-disposition'),
+        acceptsRange: status == 206 && total != null && total > 0,
+      );
+    } on Object {
+      return null;
     }
   }
 
@@ -841,20 +1297,30 @@ class DownloadManager {
           if (_isAbandoned(task.id)) return;
           final now = DateTime.now();
           final elapsed = now.difference(lastTick).inMilliseconds;
-          var speed = 0;
-          if (elapsed >= 500) {
-            speed = ((bytes - lastReceived) * 1000 / elapsed).round();
-            lastTick = now;
-            lastReceived = bytes;
+          final finished = total > 0 && done >= total;
+          if (elapsed < kTransferSampleInterval.inMilliseconds && !finished) {
+            return;
           }
+          final speed = elapsed > 0
+              ? ((bytes - lastReceived) * 1000 / elapsed).round()
+              : workingTask.speedBytesPerSec;
+          lastTick = now;
+          lastReceived = bytes;
           final progress = total > 0 ? done / total : 0.0;
-          workingTask = workingTask.copyWith(
-            progress: progress.clamp(0, 1),
-            bytesReceived: bytes,
-            speedBytesPerSec: speed,
-            updatedAt: now,
+          workingTask = stallDetector.evaluate(
+            workingTask.copyWith(
+              progress: progress.clamp(0, 1),
+              bytesReceived: bytes,
+              speedBytesPerSec: speed,
+              updatedAt: now,
+            ),
+            speed,
           );
           await _updateTask(workingTask, persist: false);
+          if (stallDetector.shouldAutoReload(workingTask)) {
+            _stallReloadIds.add(task.id);
+            cancelToken.cancel('stall_reload');
+          }
         },
       );
     } finally {
@@ -863,6 +1329,7 @@ class DownloadManager {
       await sink.close();
     }
 
+    if (await _finishStallReloadIfNeeded(task.id)) return;
     if (_isAbandoned(task.id)) return;
 
     workingTask = workingTask.copyWith(
@@ -970,11 +1437,100 @@ class DownloadManager {
     await _repository.saveQueueOrder(List.unmodifiable(_queueOrder));
   }
 
-  Future<int> _bytesOnDisk(DownloadTask task) async {
+  Future<int> _contiguousFileBytes(DownloadTask task) async {
     final path = task.filePath;
-    if (path == null) return task.bytesReceived;
-    if (!await _fileStore.exists(path)) return 0;
+    if (path == null || !await _fileStore.exists(path)) return 0;
     return _fileStore.length(path);
+  }
+
+  Future<int> _bytesOnDisk(DownloadTask task) async {
+    final contiguous = await _contiguousFileBytes(task);
+    if (contiguous > 0) return contiguous;
+    final parts = await _sumSegmentParts(task);
+    if (parts > 0) return parts;
+    if (task.filePath == null) return task.bytesReceived;
+    return 0;
+  }
+
+  int _partSlotCount(DownloadTask task) {
+    final saved = task.connectionCount;
+    final configured = _segmentConnectionCount;
+    return saved > configured ? saved : configured;
+  }
+
+  String _segmentPartPath(String filePath, int index) => '$filePath.part$index';
+
+  Future<int> _sumSegmentParts(DownloadTask task) async {
+    final path = task.filePath;
+    if (path == null) return 0;
+    var total = 0;
+    final slots = _partSlotCount(task);
+    for (var index = 0; index < slots; index++) {
+      final partPath = _segmentPartPath(path, index);
+      if (!await _fileStore.exists(partPath)) continue;
+      total += await _fileStore.length(partPath);
+    }
+    return total;
+  }
+
+  Future<void> _deleteSegmentParts(String filePath, int count) async {
+    for (var index = 0; index < count; index++) {
+      final partPath = _segmentPartPath(filePath, index);
+      try {
+        if (await _fileStore.exists(partPath)) {
+          await _fileStore.delete(partPath);
+        }
+      } on Object {
+        // Best-effort cleanup.
+      }
+    }
+  }
+
+  bool _preferSingleConnection(String url) {
+    final path = Uri.tryParse(url)?.path.toLowerCase() ?? url.toLowerCase();
+    const suffixes = [
+      '.jpg',
+      '.jpeg',
+      '.png',
+      '.gif',
+      '.webp',
+      '.svg',
+      '.ico',
+      '.bmp',
+      '.avif',
+    ];
+    return suffixes.any(path.endsWith);
+  }
+
+  Future<bool> _finishStallReloadIfNeeded(String id) async {
+    if (!_stallReloadIds.remove(id)) return false;
+    if (_isAbandoned(id)) return true;
+    await _requeueAfterStall(id);
+    return true;
+  }
+
+  Future<void> _requeueAfterStall(String id) async {
+    final task = _tasks[id];
+    if (task == null || _isAbandoned(id)) return;
+    stallDetector.clear(id);
+    final bytesReceived = await _bytesOnDisk(task);
+    final fileSize = task.fileSize;
+    await _updateTask(
+      task.copyWith(
+        status: DownloadStatus.queued,
+        bytesReceived: bytesReceived,
+        progress: fileSize != null && fileSize > 0
+            ? (bytesReceived / fileSize).clamp(0, 1)
+            : task.progress,
+        isStuck: false,
+        isSlow: false,
+        stuckDurationSecs: 0,
+        reloadCount: task.reloadCount + 1,
+        errorMessage: null,
+        updatedAt: DateTime.now(),
+      ),
+    );
+    unawaited(_processQueue());
   }
 
   Future<DownloadTask> _hydrateBytesFromDisk(DownloadTask task) async {
@@ -1267,6 +1823,59 @@ class DownloadManager {
         'Make sure the post is public, then try again or open it in the browser first.';
   }
 
+  bool _wantsSavedAudio(DownloadTask task) {
+    return task.mimeType?.toLowerCase().startsWith('audio/') == true;
+  }
+
+  String? _contentTypeForSave(DownloadTask task, String? responseType) {
+    if (_wantsSavedAudio(task)) return task.mimeType;
+    return responseType;
+  }
+
+  /// When the user asked for audio, copy the soundtrack out of a muxed MP4.
+  /// Direct audio files (M4A, Opus) are kept as downloaded.
+  Future<DownloadTask?> _saveAudioEdition(DownloadTask task) async {
+    if (!_wantsSavedAudio(task)) return task;
+    final path = task.filePath;
+    if (path == null) return task;
+
+    final Mp4AudioExtractResult result;
+    try {
+      result = Mp4AudioExtractor.extract(await _fileStore.readBytes(path));
+    } on Object {
+      await _failAudioSave(task, 'Could not save audio from this video.');
+      return null;
+    }
+
+    switch (result) {
+      case Mp4AudioUnchanged():
+        return task;
+      case Mp4AudioReady(:final bytes):
+        await _fileStore.writeBytes(path, bytes);
+        return task.copyWith(
+          fileName: FileNameResolver.replaceExtension(task.fileName, 'audio/mp4'),
+          mimeType: 'audio/mp4',
+          fileSize: bytes.length,
+          bytesReceived: bytes.length,
+        );
+      case Mp4AudioFailed(:final message):
+        await _failAudioSave(task, message);
+        return null;
+    }
+  }
+
+  Future<void> _failAudioSave(DownloadTask task, String message) async {
+    final path = task.filePath;
+    if (path != null && await _fileStore.exists(path)) {
+      await _fileStore.delete(path);
+    }
+    await _handleFailure(
+      task.copyWith(clearFilePath: true),
+      message,
+      retryable: false,
+    );
+  }
+
   StorageCategory _categoryForMime(String? mime, String fileName) {
     final lower = (mime ?? '').toLowerCase();
     if (lower.startsWith('video/')) return StorageCategory.videos;
@@ -1381,4 +1990,18 @@ class DownloadManager {
     }
     await _progressController.close();
   }
+}
+
+class _RangeProbe {
+  const _RangeProbe({
+    required this.totalBytes,
+    required this.contentType,
+    required this.contentDisposition,
+    required this.acceptsRange,
+  });
+
+  final int? totalBytes;
+  final String? contentType;
+  final String? contentDisposition;
+  final bool acceptsRange;
 }

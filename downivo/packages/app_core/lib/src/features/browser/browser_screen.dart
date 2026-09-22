@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:analytics/analytics.dart';
 import 'package:browser/browser.dart';
 import 'package:design_system/design_system.dart';
-import 'package:download_engine/download_engine.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,9 +10,9 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../providers/analytics_providers.dart';
 import '../../providers/browser_providers.dart';
-import '../../providers/download_providers.dart';
+import '../../providers/settings_provider.dart';
+import '../downloads/download_enqueue.dart';
 import '../downloads/download_wizard_dialog.dart';
-import '../downloads/media_selection_sheet.dart';
 import 'browser_home.dart';
 import 'browser_sheets.dart';
 
@@ -283,57 +282,19 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
     final result = await DownloadWizardDialog.show(
       context,
       initialUrl: detected.url,
+      initialFormat: ref.read(settingsProvider).preferredFormat,
     );
     if (result == null || !mounted) return;
 
-    try {
-      // Check for multi-item content (carousel).
-      final uri = Uri.tryParse(result.url);
-      if (uri != null && ContentProviderRegistry.canHandle(uri)) {
-        final resources = await discoverAllResources(ref, result.url);
-        if (resources.length > 1 && mounted) {
-          final selected = await MediaSelectionSheet.show(
-            context,
-            resources: resources,
-            url: result.url,
-          );
-          if (selected == null || selected.isEmpty || !mounted) return;
-          await enqueueMultipleDownloads(
-            ref,
-            selected,
-            priority: result.priority,
-          );
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('${selected.length} downloads queued'),
-              ),
-            );
-          }
-          return;
-        }
-      }
-
-      await enqueueDownload(
-        ref,
-        result.url,
-        fileName: result.fileName,
-        priority: result.priority,
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Queued ${detected.label}')),
-        );
-      }
-    } catch (error) {
-      if (!mounted) return;
-      final message = error is ArgumentError
-          ? (error.message?.toString() ?? 'Invalid URL')
-          : error.toString();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
-    }
+    await enqueueUrlFlow(
+      context,
+      ref,
+      result.url,
+      fileName: result.fileName,
+      priority: result.priority,
+      preferredFormat: result.format,
+      goToDownloads: true,
+    );
   }
 
   Future<void> _pickPageDownload(BuildContext context) async {

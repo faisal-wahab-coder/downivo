@@ -184,6 +184,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       validation.uri!.toString(),
       goToDownloads: true,
       formatOverride: _selectedFormat,
+      resolvedResources: _resources.isEmpty ? null : _resources,
     );
   }
 
@@ -231,13 +232,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               );
             }
           : null,
-      onMoreOptions: preview != null &&
-              preview.formats.length > 1 &&
-              !TikTokResolver.isWatermarkChoice(preview.formats)
+      onMoreOptions: preview != null && preview.formats.length > 1
           ? () async {
               final picked = await FormatPickerSheet.show(
                 context,
                 formats: preview.formats,
+                selected: _selectedFormat,
                 selectedUrl: _selectedFormat?.url ?? preview.directUrl,
               );
               if (picked != null && mounted) {

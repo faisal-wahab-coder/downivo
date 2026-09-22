@@ -360,6 +360,7 @@ class RedditResolver {
     final mediaUrl = _mp4UrlFromRedditVideo(redditVideo);
     if (mediaUrl == null) return null;
 
+    final audioUrl = audioStreamUrlFromVideo(redditVideo);
     return _buildResource(
       pageUrl: pageUrl,
       mediaUrl: mediaUrl,
@@ -367,6 +368,21 @@ class RedditResolver {
       fallbackSlug: postId,
       mimeType: 'video/mp4',
       thumbnailUrl: thumbnailUrl,
+      formats: [
+        MediaFormat(
+          url: mediaUrl,
+          label: 'Video',
+          mimeType: 'video/mp4',
+          isRecommended: true,
+        ),
+        if (audioUrl != null)
+          MediaFormat(
+            url: audioUrl,
+            label: 'M4A',
+            mimeType: 'audio/mp4',
+            track: MediaFormatTrack.audio,
+          ),
+      ],
     );
   }
 
@@ -635,6 +651,7 @@ class RedditResolver {
     required String? fallbackSlug,
     required String mimeType,
     required String? thumbnailUrl,
+    List<MediaFormat> formats = const [],
   }) {
     return DiscoveredResource(
       directUrl: mediaUrl,
@@ -652,6 +669,7 @@ class RedditResolver {
       mimeType: mimeType,
       thumbnailUrl: thumbnailUrl,
       kind: DiscoveredResourceKind.fromMime(mimeType),
+      formats: formats,
     );
   }
 
