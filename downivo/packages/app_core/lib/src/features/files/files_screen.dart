@@ -218,7 +218,7 @@ SliverGridDelegate _galleryGridDelegate(BuildContext context) {
     crossAxisCount: wide ? 3 : 2,
     mainAxisSpacing: UdmSpacing.gridGap,
     crossAxisSpacing: UdmSpacing.gridGap,
-    childAspectRatio: 1,
+    mainAxisExtent: 188,
   );
 }
 
@@ -364,7 +364,6 @@ class _BrowseView extends ConsumerWidget {
                     file: file,
                     onTap: () => onOpenFile(file),
                     onMore: () => _openActions(context, ref, file),
-                    onDelete: () => _deleteFile(context, ref, file),
                   );
                 },
               ),
@@ -442,7 +441,6 @@ class _SearchResults extends ConsumerWidget {
                     file: file,
                     onTap: () => onOpenFile(file),
                     onMore: () => _openActions(context, ref, file),
-                    onDelete: () => _deleteFile(context, ref, file),
                   );
                 },
               )
@@ -636,7 +634,7 @@ class _FolderIconWell extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: isDark
-            ? tokens.surfaceElevated
+            ? swatch.icon.withValues(alpha: 0.18)
             : tokens.surface.withValues(alpha: 0.72),
         borderRadius: BorderRadius.circular(UdmRadius.icon),
       ),
@@ -650,75 +648,74 @@ class _FileGridTile extends StatelessWidget {
     required this.file,
     required this.onTap,
     required this.onMore,
-    required this.onDelete,
   });
 
   final LibraryFile file;
   final VoidCallback onTap;
   final VoidCallback onMore;
-  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
     final tokens = ZfileTokens.of(context);
-    return Card(
+    final theme = Theme.of(context);
+    return Material(
+      color: tokens.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(UdmRadius.tile),
+        side: BorderSide(color: tokens.border),
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         onLongPress: onMore,
-        child: Stack(
-          fit: StackFit.expand,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            FileThumbnail(file: file, expand: true, borderRadius: 0),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      tokens.onboarding.withValues(alpha: 0),
-                      tokens.onboarding.withValues(alpha: 0.72),
-                    ],
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    UdmSpacing.sm,
-                    UdmSpacing.xl,
-                    UdmSpacing.sm,
-                    UdmSpacing.sm,
-                  ),
-                  child: Text(
-                    file.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: tokens.onGradientBody,
-                      fontWeight: FontWeight.w500,
+            Expanded(child: _FileGridArt(file: file)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                UdmSpacing.md,
+                UdmSpacing.sm,
+                UdmSpacing.xs,
+                UdmSpacing.sm,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          file.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w500,
+                            color: tokens.heading,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          TransferFormat.bytes(file.sizeBytes),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: tokens.muted,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ),
-            ),
-            Positioned(
-              top: UdmSpacing.xs,
-              right: UdmSpacing.xs,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _GridIconButton(
-                    icon: Icons.delete_outline,
-                    tooltip: 'Delete',
-                    onPressed: onDelete,
-                  ),
-                  const SizedBox(width: UdmSpacing.xs),
-                  _GridIconButton(
-                    icon: Icons.more_vert,
+                  IconButton(
+                    icon: const Icon(Icons.more_vert, size: 20),
                     tooltip: 'More actions',
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 36,
+                      minHeight: 36,
+                    ),
+                    color: tokens.body,
                     onPressed: onMore,
                   ),
                 ],
@@ -731,34 +728,83 @@ class _FileGridTile extends StatelessWidget {
   }
 }
 
-class _GridIconButton extends StatelessWidget {
-  const _GridIconButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-  });
+class _FileGridArt extends StatelessWidget {
+  const _FileGridArt({required this.file});
 
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onPressed;
+  final LibraryFile file;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return IconButton.filledTonal(
-      icon: Icon(icon, size: 18),
-      tooltip: tooltip,
-      visualDensity: VisualDensity.compact,
-      style: IconButton.styleFrom(
-        foregroundColor: scheme.onInverseSurface,
-        backgroundColor: scheme.inverseSurface.withValues(alpha: 0.72),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        minimumSize: const Size(32, 32),
-        padding: const EdgeInsets.all(6),
+    final tokens = ZfileTokens.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    if (file.isGalleryImage) {
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          FileThumbnail(file: file, expand: true, borderRadius: 0),
+          if (file.isFavorite)
+            const Positioned(
+              top: UdmSpacing.sm,
+              right: UdmSpacing.sm,
+              child: Icon(Icons.star, size: 16, color: Colors.white),
+            ),
+        ],
+      );
+    }
+
+    final swatch = tokens.swatch(_fileCategoryKey(file));
+    return ColoredBox(
+      color: swatch.background,
+      child: Stack(
+        children: [
+          Center(
+            child: Container(
+              width: 56,
+              height: 56,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? swatch.icon.withValues(alpha: 0.18)
+                    : tokens.surface.withValues(alpha: 0.72),
+                borderRadius: BorderRadius.circular(UdmRadius.icon),
+              ),
+              child: Icon(_fileIcon(file), color: swatch.icon, size: 28),
+            ),
+          ),
+          if (file.isFavorite)
+            Positioned(
+              top: UdmSpacing.sm,
+              right: UdmSpacing.sm,
+              child: Icon(Icons.star, size: 16, color: swatch.icon),
+            ),
+        ],
       ),
-      onPressed: onPressed,
     );
   }
+}
+
+String _fileCategoryKey(LibraryFile file) => switch (file.category) {
+  StorageCategory.videos => 'videos',
+  StorageCategory.images => 'images',
+  StorageCategory.audio => 'audio',
+  StorageCategory.documents => 'documents',
+  StorageCategory.apk => 'apps',
+  _ => 'other',
+};
+
+IconData _fileIcon(LibraryFile file) {
+  if (file.isGalleryVideo) return Icons.movie_outlined;
+  if (file.isGalleryImage) return Icons.image_outlined;
+  return switch (file.category) {
+    StorageCategory.videos => Icons.movie_outlined,
+    StorageCategory.images => Icons.image_outlined,
+    StorageCategory.audio => Icons.audiotrack_outlined,
+    StorageCategory.documents => Icons.description_outlined,
+    StorageCategory.archives => Icons.folder_zip_outlined,
+    StorageCategory.apk => Icons.android_outlined,
+    StorageCategory.qrDownloads => Icons.qr_code_2_outlined,
+    _ => Icons.insert_drive_file_outlined,
+  };
 }
 
 class _FileTile extends StatelessWidget {

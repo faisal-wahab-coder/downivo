@@ -48,6 +48,49 @@ void main() {
     expect(Mp4AudioExtractor.extract(webm), isA<Mp4AudioUnchanged>());
   });
 
+  test('finds moov that follows a size-0 mdat', () {
+    final video = Uint8List.fromList('VIDEO!!!!'.codeUnits);
+    final audio = Uint8List.fromList('AUDIO!!!!'.codeUnits);
+    final file = _sizeZeroMdatMp4(videoSample: video, audioSample: audio);
+
+    final result = Mp4AudioExtractor.extract(file);
+    expect(result, isA<Mp4AudioReady>());
+    final bytes = (result as Mp4AudioReady).bytes;
+    expect(String.fromCharCodes(bytes), contains('AUDIO!!!!'));
+    expect(String.fromCharCodes(bytes), isNot(contains('VIDEO!!!!')));
+  });
+
+  test('keeps audio samples that fit when the table runs past the file', () {
+    final video = Uint8List.fromList('VIDEO!!!!'.codeUnits);
+    final audio = Uint8List.fromList('AUDIO!!!!'.codeUnits);
+    final file = _overlongSampleTableMp4(videoSample: video, audioSample: audio);
+
+    final result = Mp4AudioExtractor.extract(file);
+    expect(result, isA<Mp4AudioReady>());
+    expect(String.fromCharCodes((result as Mp4AudioReady).bytes), contains('AUDIO!!!!'));
+  });
+
+  test('extractRead skips the video payload', () async {
+    final video = Uint8List(4096);
+    final audio = Uint8List.fromList('AUDIO!!!!'.codeUnits);
+    final file = _muxedMp4(videoSample: video, audioSample: audio);
+    var readTotal = 0;
+    final result = await Mp4AudioExtractor.extractRead(
+      length: file.length,
+      read: (offset, length) async {
+        readTotal += length;
+        final end = offset + length > file.length ? file.length : offset + length;
+        if (offset < 0 || offset >= file.length || length <= 0) {
+          return Uint8List(0);
+        }
+        return Uint8List.sublistView(file, offset, end);
+      },
+    );
+    expect(result, isA<Mp4AudioReady>());
+    expect(String.fromCharCodes((result as Mp4AudioReady).bytes), contains('AUDIO!!!!'));
+    expect(readTotal, lessThan(file.length));
+  });
+
   test('does not add audio to images or playlists', () {
     const image = DiscoveredResource(
       directUrl: 'https://cdn.example/pic.jpg',
@@ -80,6 +123,43 @@ Uint8List _muxedMp4({
     _box('mvhd', Uint8List(8)),
     _trak('vide', ftyp.length + 8, videoSample.length),
     _trak('soun', audioOffset, audioSample.length),
+  ]));
+  return _concat([ftyp, mdat, moov]);
+}
+
+Uint8List _sizeZeroMdatMp4({
+  required Uint8List videoSample,
+  required Uint8List audioSample,
+}) {
+  final ftyp = _box('ftyp', Uint8List.fromList('isom'.codeUnits + _u32(0)));
+  final header = Uint8List(8);
+  header.setRange(4, 8, 'mdat'.codeUnits);
+  final mdat = _concat([header, videoSample, audioSample]);
+  final audioOffset = ftyp.length + 8 + videoSample.length;
+  final moov = _box('moov', _concat([
+    _box('mvhd', Uint8List(8)),
+    _trak('vide', ftyp.length + 8, videoSample.length),
+    _trak('soun', audioOffset, audioSample.length),
+  ]));
+  return _concat([ftyp, mdat, moov]);
+}
+
+Uint8List _overlongSampleTableMp4({
+  required Uint8List videoSample,
+  required Uint8List audioSample,
+}) {
+  final ftyp = _box('ftyp', Uint8List.fromList('isom'.codeUnits + _u32(0)));
+  final mdat = _box('mdat', _concat([videoSample, audioSample]));
+  final audioOffset = ftyp.length + 8 + videoSample.length;
+  final moov = _box('moov', _concat([
+    _box('mvhd', Uint8List(8)),
+    _trak('vide', ftyp.length + 8, videoSample.length),
+    _trak(
+      'soun',
+      audioOffset,
+      audioSample.length,
+      extraSampleSize: 1 << 30,
+    ),
   ]));
   return _concat([ftyp, mdat, moov]);
 }
@@ -170,14 +250,22 @@ Uint8List _videoOnlyMp4(Uint8List videoSample) {
   return _concat([ftyp, mdat, moov]);
 }
 
-Uint8List _trak(String handler, int offset, int sampleSize) {
+Uint8List _trak(
+  String handler,
+  int offset,
+  int sampleSize, {
+  int? extraSampleSize,
+}) {
   final hdlr = Uint8List(12)..setRange(8, 12, handler.codeUnits);
-  final stsz = Uint8List(16)..setRange(12, 16, _u32(sampleSize));
-  _putU32(stsz, 8, 1);
+  final sampleCount = extraSampleSize == null ? 1 : 2;
+  final stsz = Uint8List(12 + sampleCount * 4);
+  _putU32(stsz, 8, sampleCount);
+  _putU32(stsz, 12, sampleSize);
+  if (extraSampleSize != null) _putU32(stsz, 16, extraSampleSize);
   final stsc = Uint8List(20);
   _putU32(stsc, 4, 1);
   _putU32(stsc, 8, 1);
-  _putU32(stsc, 12, 1);
+  _putU32(stsc, 12, sampleCount);
   _putU32(stsc, 16, 1);
   final stco = Uint8List(12);
   _putU32(stco, 4, 1);

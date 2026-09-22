@@ -10,6 +10,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 
 - Open-source GitHub preparation (license, contributing guides, issue/PR templates).
 
+## [1.4.0] - 2026-09-22
+
+### Added
+
+- Save as Video or Audio after a video link is resolved, before the download starts
+- Save audio from a video already in Files — copies the soundtrack into the Audio library
+
+### Changed
+
+- The download wizard no longer asks for format before the link is known to be a video
+
 ## [1.3.0] - 2026-09-12
 
 ### Added

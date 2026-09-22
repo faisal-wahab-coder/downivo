@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:mime/mime.dart';
 import 'package:path/path.dart' as p;
 import 'package:performance/performance.dart';
@@ -348,6 +350,48 @@ class MediaLibraryService {
       sizeBytes: await _fileStore.length(targetPath),
       modifiedAt: await _fileStore.modifiedAt(targetPath),
       mimeType: lookupMimeType(targetPath),
+    );
+  }
+
+  Future<Uint8List> readFile(String path) => _fileStore.readBytes(path);
+
+  Future<int> fileLength(String path) => _fileStore.length(path);
+
+  Future<Uint8List> readFileAt(String path, int offset, int length) =>
+      _fileStore.readAt(path, offset, length);
+
+  /// Writes a new library file and leaves any source file in place.
+  Future<LibraryFile> addGeneratedFile({
+    required String fileName,
+    required List<int> bytes,
+    required StorageCategory category,
+    String? mimeType,
+  }) async {
+    final targetDir = _paths.categoryPath(category);
+    if (!await _fileStore.directoryExists(targetDir)) {
+      await _fileStore.createDirectory(targetDir);
+    }
+
+    final safeName = p.basename(fileName);
+    var targetPath = p.join(targetDir, safeName);
+    if (await _fileStore.exists(targetPath)) {
+      final stamp = DateTime.now().millisecondsSinceEpoch;
+      final ext = p.extension(safeName);
+      final base = p.basenameWithoutExtension(safeName);
+      targetPath = p.join(targetDir, '${base}_$stamp$ext');
+    }
+
+    await _fileStore.writeBytes(targetPath, bytes);
+    invalidateScanCache();
+    await _imports?.acknowledgePaths([targetPath]);
+
+    return LibraryFile(
+      path: targetPath,
+      name: p.basename(targetPath),
+      category: category,
+      sizeBytes: bytes.length,
+      modifiedAt: await _fileStore.modifiedAt(targetPath),
+      mimeType: mimeType ?? lookupMimeType(targetPath),
     );
   }
 

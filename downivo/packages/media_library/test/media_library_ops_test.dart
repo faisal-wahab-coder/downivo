@@ -84,6 +84,22 @@ void main() {
     expect(await File(imported.path).exists(), isTrue);
   });
 
+  test('FM-011 addGeneratedFile keeps the source and writes audio', () async {
+    final paths = StoragePaths(rootPath: root.path);
+    final source = File(p.join(paths.categoryPath(StorageCategory.videos), 'alpha.mp4'));
+    final saved = await service.addGeneratedFile(
+      fileName: 'alpha.m4a',
+      bytes: [1, 2, 3, 4],
+      category: StorageCategory.audio,
+      mimeType: 'audio/mp4',
+    );
+
+    expect(await source.exists(), isTrue);
+    expect(saved.category, StorageCategory.audio);
+    expect(saved.name, 'alpha.m4a');
+    expect(await File(saved.path).readAsBytes(), [1, 2, 3, 4]);
+  });
+
   test('FM-009 saveToGallery rejects non-media', () async {
     final paths = StoragePaths(rootPath: root.path);
     final docs = Directory(paths.categoryPath(StorageCategory.documents));

@@ -154,3 +154,10 @@ Release engineering: [`RELEASE.md`](RELEASE.md) · [`CHANGELOG.md`](CHANGELOG.md
 - [x] Multi-segment downloads, speed limit, scheduler, stall detection, checksums
 - [x] Instagram carousel slide recovery
 - [x] [`CHANGELOG.md`](CHANGELOG.md) for 1.3.0
+
+**1.4.0 — Save as Video/Audio (complete)**
+
+- [x] Version `1.4.0+6`
+- [x] Choose Video or Audio after a video link is resolved
+- [x] Save audio from a video already in Files
+- [x] [`CHANGELOG.md`](CHANGELOG.md) for 1.4.0

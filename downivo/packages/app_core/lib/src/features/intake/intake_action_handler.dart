@@ -8,7 +8,6 @@ import 'package:storage/storage.dart';
 
 import '../../providers/analytics_providers.dart';
 import '../../providers/browser_providers.dart';
-import '../../providers/settings_provider.dart';
 import '../../providers/intake_providers.dart';
 import '../../providers/library_providers.dart';
 import '../downloads/download_enqueue.dart';
@@ -30,7 +29,6 @@ class IntakeActionHandler {
         final result = await DownloadWizardDialog.show(
           context,
           initialUrl: action.url,
-          initialFormat: ref.read(settingsProvider).preferredFormat,
         );
         if (result == null || !context.mounted) return;
         await enqueueUrlFlow(
@@ -39,7 +37,6 @@ class IntakeActionHandler {
           result.url,
           fileName: result.fileName,
           priority: result.priority,
-          preferredFormat: result.format,
           goToDownloads: true,
         );
       case IntakeActionType.openInBrowser:

@@ -12,6 +12,14 @@ class ChangelogEntry {
 /// Newest version first. Keep in sync with `CHANGELOG.md` and pubspec version.
 const changelogEntries = <ChangelogEntry>[
   ChangelogEntry(
+    version: '1.4.0',
+    highlights: [
+      'Choose Video or Audio after a video link is found, before the download starts.',
+      'Save audio from a video already in Files — the soundtrack is copied into Audio.',
+      'The download wizard no longer asks for format before the link is resolved.',
+    ],
+  ),
+  ChangelogEntry(
     version: '1.3.0',
     highlights: [
       'Multi-segment downloads with a live segment view and speed graph.',

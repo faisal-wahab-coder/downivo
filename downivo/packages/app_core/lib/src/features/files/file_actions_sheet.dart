@@ -11,6 +11,7 @@ import '../../providers/analytics_providers.dart';
 import '../../providers/library_providers.dart';
 import 'image_gallery_screen.dart';
 import 'open_managed_media.dart';
+import 'save_video_audio.dart';
 
 Future<void> showFileActionsSheet({
   required BuildContext context,
@@ -122,6 +123,21 @@ class FileActionsSheet extends StatelessWidget {
               }
             },
           ),
+          if (file.category == StorageCategory.videos)
+            _ActionTile(
+              icon: Icons.audiotrack_outlined,
+              label: 'Save audio',
+              onTap: () async {
+                Navigator.pop(context);
+                if (!hostContext.mounted) return;
+                await saveVideoAsAudio(
+                  context: hostContext,
+                  ref: hostRef,
+                  file: file,
+                  onChanged: onChanged,
+                );
+              },
+            ),
           _ActionTile(
             icon: Icons.share_outlined,
             label: 'Share',

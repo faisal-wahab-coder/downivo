@@ -53,6 +53,26 @@ class IoFileStore implements FileStore {
   Future<Uint8List> readBytes(String path) => File(path).readAsBytes();
 
   @override
+  Future<Uint8List> readAt(String path, int offset, int length) async {
+    if (length <= 0 || offset < 0) return Uint8List(0);
+    final file = await File(path).open();
+    try {
+      await file.setPosition(offset);
+      final builder = BytesBuilder(copy: false);
+      var remaining = length;
+      while (remaining > 0) {
+        final chunk = await file.read(remaining > 1024 * 1024 ? 1024 * 1024 : remaining);
+        if (chunk.isEmpty) break;
+        builder.add(chunk);
+        remaining -= chunk.length;
+      }
+      return builder.toBytes();
+    } finally {
+      await file.close();
+    }
+  }
+
+  @override
   Stream<List<int>> openRead(String path) => File(path).openRead();
 
   @override

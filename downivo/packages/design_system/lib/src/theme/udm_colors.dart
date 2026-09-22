@@ -83,18 +83,18 @@ abstract final class UdmColors {
   static const otherIcon = Color(0xFF9CA3AF);
   static const otherBackground = Color(0xFFEFEFF3);
 
-  static const darkImagesIcon = Color(0xFFFFB84D);
-  static const darkImagesBackground = Color(0xFF3A2E1A);
-  static const darkVideosIcon = Color(0xFF4DD9F2);
-  static const darkVideosBackground = Color(0xFF16333A);
-  static const darkAudioIcon = Color(0xFFA78BFA);
-  static const darkAudioBackground = Color(0xFF2C2450);
-  static const darkDocumentsIcon = Color(0xFF8482FF);
-  static const darkDocumentsBackground = Color(0xFF262260);
-  static const darkAppsIcon = Color(0xFFF472B6);
-  static const darkAppsBackground = Color(0xFF3A1F30);
-  static const darkOtherIcon = Color(0xFFB8B8C4);
-  static const darkOtherBackground = Color(0xFF2A2836);
+  static const darkImagesIcon = Color(0xFFFFC56B);
+  static const darkImagesBackground = Color(0xFF4A3214);
+  static const darkVideosIcon = Color(0xFF5CEBFA);
+  static const darkVideosBackground = Color(0xFF145868);
+  static const darkAudioIcon = Color(0xFFC4B5FD);
+  static const darkAudioBackground = Color(0xFF3A2D6E);
+  static const darkDocumentsIcon = Color(0xFFA8A6FF);
+  static const darkDocumentsBackground = Color(0xFF2E2C86);
+  static const darkAppsIcon = Color(0xFFFF9EC8);
+  static const darkAppsBackground = Color(0xFF5A2444);
+  static const darkOtherIcon = Color(0xFFD2CEE0);
+  static const darkOtherBackground = Color(0xFF34304A);
 
   static const voidGraphite = darkCanvas;
   static const raisedSlate = darkSurface;

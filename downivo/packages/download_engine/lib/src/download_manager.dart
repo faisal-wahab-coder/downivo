@@ -1033,6 +1033,7 @@ class DownloadManager {
     var stopped = false;
     var lastTick = DateTime.now();
     var lastReceived = workingTask.bytesReceived;
+    final lastSegmentBytes = List<int>.from(downloaded);
     final timer = Timer.periodic(kTransferSampleInterval, (_) {
       if (stopped || _isAbandoned(task.id)) return;
       final received = downloaded.fold<int>(0, (sum, value) => sum + value);
@@ -1046,11 +1047,20 @@ class DownloadManager {
         for (var index = 0; index < planned.length; index++)
           planned[index].copyWith(
             downloadedBytes: downloaded[index],
+            speed: downloaded[index] >= planned[index].totalBytes
+                ? 0
+                : ((downloaded[index] - lastSegmentBytes[index]) * 1000 /
+                        elapsed)
+                    .round()
+                    .clamp(0, 1 << 30),
             status: downloaded[index] >= planned[index].totalBytes
                 ? SegmentStatus.completed
                 : SegmentStatus.downloading,
           ),
       ];
+      for (var index = 0; index < downloaded.length; index++) {
+        lastSegmentBytes[index] = downloaded[index];
+      }
       unawaited(() async {
         workingTask = await _publishTransferProgress(
           task: workingTask,

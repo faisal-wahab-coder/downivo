@@ -11,6 +11,7 @@ import '../../providers/settings_provider.dart';
 import 'apply_preferred_format.dart';
 import 'format_picker_sheet.dart';
 import 'media_selection_sheet.dart';
+import 'save_as_prompt.dart';
 
 /// Omitted format argument. Distinct from null, which means Any for this download.
 const _formatUnset = Object();
@@ -114,12 +115,31 @@ Future<void> _enqueueSocialImmediately(
   _openDownloads(context, goToDownloads, 'Finding video…');
 
   try {
-    final effective = _settingsForEnqueue(ref, preferredFormat);
+    var effective = _settingsForEnqueue(ref, preferredFormat);
     ref.read(analyticsServiceProvider).screen(AnalyticsScreen.resolution);
     var resources = await discoverAllResources(ref, uri.toString());
     if (_preparedWasClosed(manager, task.id)) return;
 
     final sheetContext = _routerContext(router);
+    final resolvedSettings = await _resolveSaveAs(
+      effective,
+      resources,
+      formatAlreadyChosen: formatOverride != null,
+      ask: () {
+        if (sheetContext == null || !sheetContext.mounted) return null;
+        return showSaveAsPrompt(
+          sheetContext,
+          audioSelected: effective.preferredFormat == 'audio',
+        );
+      },
+    );
+    if (_preparedWasClosed(manager, task.id)) return;
+    if (resolvedSettings == null) {
+      await manager.cancel(task.id);
+      return;
+    }
+    effective = resolvedSettings;
+
     var picked = formatOverride;
     if (resources.length == 1 &&
         picked == null &&
@@ -133,6 +153,7 @@ Future<void> _enqueueSocialImmediately(
         picked = await FormatPickerSheet.show(
           sheetContext,
           formats: resource.formats,
+          selected: _settingsAudioFormat(resource, effective),
           selectedUrl: resource.directUrl,
         );
         if (picked == null) {
@@ -218,7 +239,23 @@ Future<void> _enqueueKnownResources(
   Object? preferredFormat = _formatUnset,
 }) async {
   try {
-    final effective = _settingsForEnqueue(ref, preferredFormat);
+    var effective = _settingsForEnqueue(ref, preferredFormat);
+    if (!context.mounted) return;
+    final resolvedSettings = await _resolveSaveAs(
+      effective,
+      resources,
+      formatAlreadyChosen: formatOverride != null,
+      ask: () {
+        if (!context.mounted) return null;
+        return showSaveAsPrompt(
+          context,
+          audioSelected: effective.preferredFormat == 'audio',
+        );
+      },
+    );
+    if (resolvedSettings == null || !context.mounted) return;
+    effective = resolvedSettings;
+
     var picked = formatOverride;
     if (resources.length == 1 &&
         picked == null &&
@@ -232,6 +269,7 @@ Future<void> _enqueueKnownResources(
         picked = await FormatPickerSheet.show(
           context,
           formats: resource.formats,
+          selected: _settingsAudioFormat(resource, effective),
           selectedUrl: resource.directUrl,
         );
         if (picked == null || !context.mounted) return;
@@ -285,7 +323,67 @@ Future<void> _enqueueResource(
   );
 }
 
-/// Settings for this enqueue. An explicit format, including null for Any,
+/// Asks Video or Audio once a link is known to be a video.
+///
+/// Returns null when the user cancels. Settings Audio is dropped for files
+/// that have no audio choice. A quality or watermark sheet already includes
+/// the choice, so this prompt stays closed in that case.
+Future<AppSettings?> _resolveSaveAs(
+  AppSettings settings,
+  List<DiscoveredResource> resources, {
+  required bool formatAlreadyChosen,
+  required Future<SaveAsChoice?>? Function() ask,
+}) async {
+  if (resources.length != 1) {
+    if (!resources.any(_canChooseAudio) && settings.preferredFormat == 'audio') {
+      return settings.copyWith(preferredFormat: null);
+    }
+    return settings;
+  }
+  final resource = resources.first;
+  if (!_canChooseAudio(resource)) {
+    if (settings.preferredFormat == 'audio') {
+      return settings.copyWith(preferredFormat: null);
+    }
+    return settings;
+  }
+  if (formatAlreadyChosen || _formatSheetWillShow(resource, settings)) {
+    return settings;
+  }
+  final pending = ask();
+  if (pending == null) return settings;
+  final choice = await pending;
+  if (choice == null) return null;
+  return settings.copyWith(
+    preferredFormat: choice == SaveAsChoice.audio ? 'audio' : null,
+  );
+}
+
+bool _canChooseAudio(DiscoveredResource resource) {
+  return resource.resolvedKind == DiscoveredResourceKind.video &&
+      resource.offersAudio;
+}
+
+bool _formatSheetWillShow(DiscoveredResource resource, AppSettings settings) {
+  if (!AudioDownloadOption.shouldAutoPrompt(resource.formats)) return false;
+  final skipPicker =
+      !TikTokResolver.isWatermarkChoice(resource.formats) &&
+      explicitPreferredFormat(resource, settings) != null;
+  return !skipPicker;
+}
+
+MediaFormat? _settingsAudioFormat(
+  DiscoveredResource resource,
+  AppSettings settings,
+) {
+  if (settings.preferredFormat != 'audio') return null;
+  for (final format in resource.formats) {
+    if (format.track == MediaFormatTrack.audio) return format;
+  }
+  return null;
+}
+
+/// Settings for this enqueue. An explicit format, including null for Video,
 /// replaces the saved preference without writing it.
 AppSettings _settingsForEnqueue(WidgetRef ref, Object? preferredFormat) {
   final settings = ref.read(settingsProvider);

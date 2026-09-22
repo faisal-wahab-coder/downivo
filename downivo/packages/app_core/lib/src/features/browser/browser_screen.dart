@@ -10,7 +10,6 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../providers/analytics_providers.dart';
 import '../../providers/browser_providers.dart';
-import '../../providers/settings_provider.dart';
 import '../downloads/download_enqueue.dart';
 import '../downloads/download_wizard_dialog.dart';
 import 'browser_home.dart';
@@ -282,7 +281,6 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
     final result = await DownloadWizardDialog.show(
       context,
       initialUrl: detected.url,
-      initialFormat: ref.read(settingsProvider).preferredFormat,
     );
     if (result == null || !mounted) return;
 
@@ -292,7 +290,6 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
       result.url,
       fileName: result.fileName,
       priority: result.priority,
-      preferredFormat: result.format,
       goToDownloads: true,
     );
   }

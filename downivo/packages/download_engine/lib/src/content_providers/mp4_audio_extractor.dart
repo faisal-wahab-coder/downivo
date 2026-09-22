@@ -22,10 +22,103 @@ class Mp4AudioExtractor {
   static Mp4AudioExtractResult extract(Uint8List bytes) {
     if (bytes.length < 8) return const Mp4AudioUnchanged();
     final boxes = _parse(bytes, 0, bytes.length, recursive: true);
-    if (_first(boxes, 'ftyp') == null) {
-      return const Mp4AudioUnchanged();
+    return _fromBoxes(boxes, bytes.length, (offset, length) {
+      if (offset < 0 || length <= 0 || offset >= bytes.length) {
+        return Uint8List(0);
+      }
+      final end = offset + length;
+      return Uint8List.sublistView(
+        bytes,
+        offset,
+        end > bytes.length ? bytes.length : end,
+      );
+    });
+  }
+
+  /// Copies audio by reading the index and the audio frames.
+  ///
+  /// YouTube stores the index after a large video payload. The video bytes
+  /// are skipped.
+  static Future<Mp4AudioExtractResult> extractRead({
+    required int length,
+    required Future<Uint8List> Function(int offset, int length) read,
+  }) async {
+    if (length < 8) return const Mp4AudioUnchanged();
+    final index = await _indexFile(length, read);
+    if (index.ftyp == null) return const Mp4AudioUnchanged();
+    if (index.moov == null) {
+      return const Mp4AudioFailed('Could not save audio from this video.');
     }
 
+    if (index.ftyp!.size > _maxIndexRead ||
+        index.moov!.size > _maxIndexRead ||
+        index.moofs.any((span) => span.size > _maxIndexRead)) {
+      return const Mp4AudioFailed('Could not save audio from this video.');
+    }
+    final ftypBytes = await read(index.ftyp!.offset, index.ftyp!.size);
+    final moovBytes = await read(index.moov!.offset, index.moov!.size);
+    final boxes = <_Box>[
+      ..._parse(ftypBytes, 0, ftypBytes.length, recursive: true),
+      ..._parse(moovBytes, 0, moovBytes.length, recursive: true),
+    ];
+    for (final span in index.moofs) {
+      final bytes = await read(span.offset, span.size);
+      final parsed = _parse(bytes, 0, bytes.length, recursive: true);
+      if (parsed.isEmpty) continue;
+      final moof = parsed.first;
+      boxes.add(_Box(moof.type, moof.payload, moof.children, span.offset));
+    }
+
+    final planned = _plan(boxes, length);
+    if (planned is Mp4AudioExtractResult) return planned;
+    final plan = planned as _AudioPlan;
+    final payload = await _readSamples(plan.samples, read);
+    if (payload == null) {
+      return const Mp4AudioFailed('Could not save audio from this video.');
+    }
+    return _package(
+      boxes: boxes,
+      moov: plan.moov,
+      audioTrak: plan.audioTrak,
+      samples: plan.samples,
+      rewriteTables: plan.rewriteTables,
+      payload: payload,
+    );
+  }
+
+  static Mp4AudioExtractResult _fromBoxes(
+    List<_Box> boxes,
+    int fileLength,
+    Uint8List Function(int offset, int length) copy,
+  ) {
+    final planned = _plan(boxes, fileLength);
+    if (planned is Mp4AudioExtractResult) return planned;
+    final plan = planned as _AudioPlan;
+
+    final audioBytes = BytesBuilder(copy: false);
+    for (final sample in plan.samples) {
+      final piece = copy(sample.offset, sample.size);
+      if (piece.length != sample.size) {
+        return const Mp4AudioFailed('Could not save audio from this video.');
+      }
+      audioBytes.add(piece);
+    }
+    final payload = audioBytes.toBytes();
+    if (payload.isEmpty) {
+      return const Mp4AudioFailed('This video has no audio track to save.');
+    }
+    return _package(
+      boxes: boxes,
+      moov: plan.moov,
+      audioTrak: plan.audioTrak,
+      samples: plan.samples,
+      rewriteTables: plan.rewriteTables,
+      payload: payload,
+    );
+  }
+
+  static Object _plan(List<_Box> boxes, int fileLength) {
+    if (_first(boxes, 'ftyp') == null) return const Mp4AudioUnchanged();
     final moov = _first(boxes, 'moov');
     if (moov == null || moov.children == null) {
       return const Mp4AudioFailed('Could not save audio from this video.');
@@ -46,26 +139,31 @@ class Mp4AudioExtractor {
     }
     if (!hasVideo) return const Mp4AudioUnchanged();
 
-    final progressive = _audioSamples(bytes, audioTrak);
-    final fromFragments = progressive == null || progressive.isEmpty;
-    final samples = fromFragments
-        ? _fragmentSamples(bytes, boxes, audioTrak)
-        : progressive;
+    final progressive = _audioSamples(fileLength, audioTrak);
+    final fromFragments = progressive == null || progressive.samples.isEmpty;
+    final fragmented = fromFragments
+        ? _fragmentSamples(fileLength, boxes, audioTrak)
+        : null;
+    final samples = fromFragments ? fragmented : progressive.samples;
     if (samples == null || samples.isEmpty) {
       return const Mp4AudioFailed('Could not save audio from this video.');
     }
+    return _AudioPlan(
+      moov: moov,
+      audioTrak: audioTrak,
+      samples: samples,
+      rewriteTables: fromFragments ? true : progressive.rewriteTables,
+    );
+  }
 
-    final audioBytes = BytesBuilder(copy: false);
-    for (final sample in samples) {
-      audioBytes.add(
-        bytes.sublist(sample.offset, sample.offset + sample.size),
-      );
-    }
-    final payload = audioBytes.toBytes();
-    if (payload.isEmpty) {
-      return const Mp4AudioFailed('This video has no audio track to save.');
-    }
-
+  static Mp4AudioExtractResult _package({
+    required List<_Box> boxes,
+    required _Box moov,
+    required _Box audioTrak,
+    required List<_Sample> samples,
+    required bool rewriteTables,
+    required Uint8List payload,
+  }) {
     final ftyp = _serialize(_first(boxes, 'ftyp')!);
     final audioStart = ftyp.length + 8;
     final rewritten = _rewriteMoov(
@@ -73,7 +171,7 @@ class Mp4AudioExtractor {
       audioTrak,
       audioStart,
       samples,
-      rewriteTables: fromFragments,
+      rewriteTables: rewriteTables,
     );
     final mdat = _serialize(_leaf('mdat', payload));
     final moovBytes = _serialize(rewritten);
@@ -83,6 +181,78 @@ class Mp4AudioExtractor {
     out.add(mdat);
     out.add(moovBytes);
     return Mp4AudioReady(out.toBytes());
+  }
+
+  static const _maxIndexRead = 64 * 1024 * 1024;
+
+  static Future<_FileIndex> _indexFile(
+    int length,
+    Future<Uint8List> Function(int offset, int length) read,
+  ) async {
+    _Span? ftyp;
+    _Span? moov;
+    final moofs = <_Span>[];
+    var offset = 0;
+    while (offset + 8 <= length) {
+      final header = await read(offset, length - offset < 16 ? length - offset : 16);
+      if (header.length < 8) break;
+      final type = String.fromCharCodes(header.sublist(4, 8));
+      final sizeField = _u32(header, 0);
+      int size;
+      if (sizeField == 1) {
+        if (header.length < 16) break;
+        size = _u64(header, 8);
+      } else if (sizeField == 0 &&
+          (type == 'mdat' || type == 'free' || type == 'skip')) {
+        final next = await _followingBoxRead(offset + 8, length, read);
+        size = (next ?? length) - offset;
+      } else if (sizeField == 0) {
+        size = length - offset;
+      } else {
+        size = sizeField;
+      }
+      final headerSize = sizeField == 1 ? 16 : 8;
+      if (size < headerSize || offset + size > length) break;
+      final span = _Span(offset, size);
+      if (type == 'ftyp' && ftyp == null) ftyp = span;
+      if (type == 'moov') moov = span;
+      if (type == 'moof') moofs.add(span);
+      offset += size;
+    }
+    return _FileIndex(ftyp: ftyp, moov: moov, moofs: moofs);
+  }
+
+  static Future<Uint8List?> _readSamples(
+    List<_Sample> samples,
+    Future<Uint8List> Function(int offset, int length) read,
+  ) async {
+    final pieces = <Uint8List>[];
+    var index = 0;
+    while (index < samples.length) {
+      final start = samples[index].offset;
+      var end = start + samples[index].size;
+      var next = index + 1;
+      while (next < samples.length && samples[next].offset == end) {
+        end += samples[next].size;
+        next++;
+      }
+      final bytes = await read(start, end - start);
+      if (bytes.length != end - start) return null;
+      var cursor = 0;
+      for (var i = index; i < next; i++) {
+        final size = samples[i].size;
+        pieces.add(Uint8List.sublistView(bytes, cursor, cursor + size));
+        cursor += size;
+      }
+      index = next;
+    }
+    if (pieces.isEmpty) return null;
+    final out = BytesBuilder(copy: false);
+    for (final piece in pieces) {
+      out.add(piece);
+    }
+    final payload = out.toBytes();
+    return payload.isEmpty ? null : payload;
   }
 
   static _Box _rewriteMoov(
@@ -160,7 +330,10 @@ class Mp4AudioExtractor {
     return visit(mapped);
   }
 
-  static List<_Sample>? _audioSamples(Uint8List file, _Box trak) {
+  static ({List<_Sample> samples, bool rewriteTables})? _audioSamples(
+    int fileLength,
+    _Box trak,
+  ) {
     final stbl = _find(trak, 'stbl');
     if (stbl == null) return null;
     final stsz = _first(stbl.children ?? const [], 'stsz')?.payload;
@@ -181,34 +354,47 @@ class Mp4AudioExtractor {
 
     final samples = <_Sample>[];
     var sampleIndex = 0;
-    for (var chunk = 0; chunk < chunkOffsets.length; chunk++) {
+    var rewriteTables = false;
+    var stop = false;
+    for (var chunk = 0; chunk < chunkOffsets.length && !stop; chunk++) {
       var offset = chunkOffsets[chunk];
       final count = samplesPerChunk[chunk];
       for (var i = 0; i < count; i++) {
-        if (sampleIndex >= sizes.length) return null;
+        if (sampleIndex >= sizes.length) {
+          rewriteTables = true;
+          stop = true;
+          break;
+        }
         final size = sizes[sampleIndex];
-        if (size < 0 || offset < 0 || offset + size > file.length) return null;
+        if (size <= 0 || offset < 0 || offset + size > fileLength) {
+          rewriteTables = true;
+          stop = true;
+          break;
+        }
         samples.add(_Sample(offset, size));
         offset += size;
         sampleIndex++;
       }
     }
-    if (sampleIndex != sizes.length) return null;
-    return samples;
+    if (samples.isEmpty) return null;
+    if (sampleIndex != sizes.length) rewriteTables = true;
+    return (samples: samples, rewriteTables: rewriteTables);
   }
 
   static List<int>? _sampleSizes(Uint8List payload) {
     if (payload.length < 12) return null;
     final constant = _u32(payload, 4);
     final count = _u32(payload, 8);
-    if (count < 0) return null;
+    if (count < 0 || count > 16000000) return null;
     if (constant > 0) return List<int>.filled(count, constant);
     if (payload.length < 12 + count * 4) return null;
     return [for (var i = 0; i < count; i++) _u32(payload, 12 + i * 4)];
   }
 
   static List<int>? _samplesPerChunk(Uint8List payload, int chunkCount) {
-    if (payload.length < 8) return null;
+    if (payload.length < 8 || chunkCount <= 0 || chunkCount > 16000000) {
+      return null;
+    }
     final entries = _u32(payload, 4);
     if (entries <= 0 || payload.length < 8 + entries * 12) return null;
     final table = <({int first, int samples})>[];
@@ -231,6 +417,7 @@ class Mp4AudioExtractor {
   static List<int>? _chunkOffsets32(Uint8List payload) {
     if (payload.length < 8) return null;
     final count = _u32(payload, 4);
+    if (count < 0 || count > 16000000) return null;
     if (payload.length < 8 + count * 4) return null;
     return [for (var i = 0; i < count; i++) _u32(payload, 8 + i * 4)];
   }
@@ -238,13 +425,14 @@ class Mp4AudioExtractor {
   static List<int>? _chunkOffsets64(Uint8List payload) {
     if (payload.length < 8) return null;
     final count = _u32(payload, 4);
+    if (count < 0 || count > 16000000) return null;
     if (payload.length < 8 + count * 8) return null;
     return [for (var i = 0; i < count; i++) _u64(payload, 8 + i * 8)];
   }
 
   /// Audio samples live in moof/trun when the moov tables are empty.
   static List<_Sample>? _fragmentSamples(
-    Uint8List file,
+    int fileLength,
     List<_Box> boxes,
     _Box audioTrak,
   ) {
@@ -268,9 +456,9 @@ class Mp4AudioExtractor {
           );
           if (parsed == null) return null;
           for (final sample in parsed) {
-            if (sample.size < 0 ||
+            if (sample.size <= 0 ||
                 sample.offset < 0 ||
-                sample.offset + sample.size > file.length) {
+                sample.offset + sample.size > fileLength) {
               return null;
             }
             samples.add(sample);
@@ -322,7 +510,7 @@ class Mp4AudioExtractor {
     if (payload.length < 8) return null;
     final flags = _fullBoxFlags(payload);
     final count = _u32(payload, 4);
-    if (count < 0) return null;
+    if (count < 0 || count > 16000000) return null;
     if (count == 0) return const [];
     var cursor = 8;
     var dataOffset = 0;
@@ -463,13 +651,89 @@ class Mp4AudioExtractor {
       size = _u64(data, offset + 8);
       headerSize = 16;
     } else if (size == 0) {
-      size = limit - offset;
+      final type = String.fromCharCodes(data.sublist(offset + 4, offset + 8));
+      if (type == 'mdat' || type == 'free' || type == 'skip') {
+        final next = _followingBox(data, offset + 8, limit, limit, 0);
+        size = (next ?? limit) - offset;
+      } else {
+        size = limit - offset;
+      }
     }
     if (size < headerSize) return null;
     final end = offset + size;
     if (end > limit) return null;
     final type = String.fromCharCodes(data.sublist(offset + 4, offset + 8));
     return _Header(type, offset + headerSize, end);
+  }
+
+  /// Locates a moov or moof that a size-0 mdat would otherwise swallow.
+  static int? _followingBox(
+    Uint8List data,
+    int from,
+    int dataLimit,
+    int fileLimit,
+    int dataFileOffset,
+  ) {
+    var i = from;
+    final end = dataLimit < data.length ? dataLimit : data.length;
+    while (i + 16 <= end) {
+      final type = String.fromCharCodes(data.sublist(i + 4, i + 8));
+      if (type == 'moov' || type == 'moof') {
+        final remaining = fileLimit - (dataFileOffset + i);
+        final size = _boxSizeAt(data, i, remaining);
+        if (size != null && _childVisible(data, i, type)) return i;
+      }
+      i++;
+    }
+    return null;
+  }
+
+  static Future<int?> _followingBoxRead(
+    int from,
+    int limit,
+    Future<Uint8List> Function(int offset, int length) read,
+  ) async {
+    const window = 65536;
+    const overlap = 32;
+    var pos = from;
+    while (pos + 16 <= limit) {
+      final n = limit - pos < window ? limit - pos : window;
+      final chunk = await read(pos, n);
+      if (chunk.length < 16) return null;
+      final local = _followingBox(chunk, 0, chunk.length, limit, pos);
+      if (local != null) return pos + local;
+      if (n <= overlap) break;
+      pos += n - overlap;
+    }
+    return null;
+  }
+
+  static int? _boxSizeAt(Uint8List data, int start, int remaining) {
+    if (start + 8 > data.length) return null;
+    final sizeField = _u32(data, start);
+    if (sizeField == 1) {
+      if (start + 16 > data.length) return null;
+      final size = _u64(data, start + 8);
+      if (size < 16 || size > remaining) return null;
+      return size;
+    }
+    if (sizeField == 0) {
+      if (remaining < 8) return null;
+      return remaining;
+    }
+    if (sizeField < 8 || sizeField > remaining) return null;
+    return sizeField;
+  }
+
+  static bool _childVisible(Uint8List data, int start, String type) {
+    final header = _u32(data, start) == 1 ? 16 : 8;
+    final child = start + header;
+    if (child + 8 > data.length) return false;
+    final childType = String.fromCharCodes(data.sublist(child + 4, child + 8));
+    if (type == 'moov') {
+      return childType == 'mvhd' || childType == 'trak' || childType == 'udta';
+    }
+    return childType == 'mfhd' || childType == 'traf';
   }
 
   static Uint8List _serialize(_Box box) {
@@ -591,6 +855,35 @@ class _Sample {
 
   final int offset;
   final int size;
+}
+
+class _Span {
+  const _Span(this.offset, this.size);
+
+  final int offset;
+  final int size;
+}
+
+class _FileIndex {
+  const _FileIndex({this.ftyp, this.moov, this.moofs = const []});
+
+  final _Span? ftyp;
+  final _Span? moov;
+  final List<_Span> moofs;
+}
+
+class _AudioPlan {
+  const _AudioPlan({
+    required this.moov,
+    required this.audioTrak,
+    required this.samples,
+    required this.rewriteTables,
+  });
+
+  final _Box moov;
+  final _Box audioTrak;
+  final List<_Sample> samples;
+  final bool rewriteTables;
 }
 
 class _Tfhd {

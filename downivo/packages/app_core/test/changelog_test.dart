@@ -17,7 +17,7 @@ void main() {
 
     test('returns every entry newer than the last seen version', () {
       final unread = unreadChangelogEntries('1.0.0');
-      expect(unread.map((e) => e.version), ['1.3.0', '1.2.0', '1.1.0']);
+      expect(unread.map((e) => e.version), ['1.4.0', '1.3.0', '1.2.0', '1.1.0']);
     });
 
     test('shows latest only when the stored version is unknown', () {

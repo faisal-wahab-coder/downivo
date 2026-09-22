@@ -106,6 +106,17 @@ class MemoryFileStore implements FileStore {
   }
 
   @override
+  Future<Uint8List> readAt(String path, int offset, int length) async {
+    final bytes = _files[_norm(path)];
+    if (bytes == null) {
+      throw StateError('File not found: $path');
+    }
+    if (length <= 0 || offset < 0 || offset >= bytes.length) return Uint8List(0);
+    final end = math.min(offset + length, bytes.length);
+    return Uint8List.sublistView(bytes, offset, end);
+  }
+
+  @override
   Stream<List<int>> openRead(String path) async* {
     final bytes = _files[_norm(path)];
     if (bytes == null) {

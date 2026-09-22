@@ -8,7 +8,6 @@ import 'package:shared_types/shared_types.dart';
 
 import '../../providers/analytics_providers.dart';
 import '../../providers/download_providers.dart';
-import '../../providers/settings_provider.dart';
 import 'download_enqueue.dart';
 import 'download_task_widgets.dart';
 import 'download_wizard_dialog.dart';
@@ -70,6 +69,9 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
     final hasPaused = paused.isNotEmpty;
 
     final wide = MediaQuery.sizeOf(context).width >= UdmBreakpoints.desktop;
+    final tokens = ZfileTokens.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final selectedFg = isDark ? tokens.onAccent : tokens.onGradientHeading;
     final selected = _selectedId == null
         ? (tasks.isEmpty ? null : tasks.first)
         : tasks.cast<DownloadTask?>().firstWhere(
@@ -108,6 +110,26 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
                         child: FilterChip(
                           label: Text(filter.label),
                           selected: _filter == filter,
+                          showCheckmark: true,
+                          color: WidgetStateProperty.resolveWith((states) {
+                            if (states.contains(WidgetState.selected)) {
+                              return tokens.primary;
+                            }
+                            return Colors.transparent;
+                          }),
+                          checkmarkColor: selectedFg,
+                          labelStyle: TextStyle(
+                            color: _filter == filter
+                                ? selectedFg
+                                : tokens.heading,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                          side: BorderSide(
+                            color: _filter == filter
+                                ? tokens.primary
+                                : tokens.body.withValues(alpha: 0.45),
+                          ),
                           onSelected: (_) => setState(() => _filter = filter),
                         ),
                       ),
@@ -327,10 +349,7 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
 
   Future<void> _showWizard(BuildContext context, WidgetRef ref) async {
     ref.read(analyticsServiceProvider).screen(AnalyticsScreen.urlInput);
-    final result = await DownloadWizardDialog.show(
-      context,
-      initialFormat: ref.read(settingsProvider).preferredFormat,
-    );
+    final result = await DownloadWizardDialog.show(context);
     if (result == null || !context.mounted) return;
 
     await enqueueUrlFlow(
@@ -339,7 +358,6 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
       result.url,
       fileName: result.fileName,
       priority: result.priority,
-      preferredFormat: result.format,
       goToDownloads: false,
     );
   }
