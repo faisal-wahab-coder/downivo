@@ -26,9 +26,6 @@ class SettingsScreen extends ConsumerWidget {
     final wide =
         MediaQuery.sizeOf(context).width >= UdmBreakpoints.desktop;
 
-    final tokens = ZfileTokens.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final onSelected = isDark ? tokens.onAccent : tokens.onGradientHeading;
     final appearance = [
       const UdmSectionLabel(label: 'Appearance'),
       Card(
@@ -43,30 +40,6 @@ class SettingsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: UdmSpacing.md),
               SegmentedButton<ThemeModePreference>(
-                style: ButtonStyle(
-                  backgroundColor: WidgetStateProperty.resolveWith((states) {
-                    if (states.contains(WidgetState.selected)) {
-                      return tokens.primary;
-                    }
-                    return Colors.transparent;
-                  }),
-                  foregroundColor: WidgetStateProperty.resolveWith((states) {
-                    if (states.contains(WidgetState.selected)) return onSelected;
-                    return tokens.heading;
-                  }),
-                  iconColor: WidgetStateProperty.resolveWith((states) {
-                    if (states.contains(WidgetState.selected)) return onSelected;
-                    return tokens.body;
-                  }),
-                  side: WidgetStateProperty.resolveWith((states) {
-                    if (states.contains(WidgetState.selected)) {
-                      return BorderSide(color: tokens.primary);
-                    }
-                    return BorderSide(
-                      color: tokens.body.withValues(alpha: 0.45),
-                    );
-                  }),
-                ),
                 segments: const [
                   ButtonSegment(
                     value: ThemeModePreference.system,

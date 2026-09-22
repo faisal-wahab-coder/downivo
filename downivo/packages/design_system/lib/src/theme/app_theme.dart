@@ -405,7 +405,7 @@ abstract final class AppTheme {
       radioTheme: RadioThemeData(
         fillColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return tokens.primary;
-          return tokens.iconInactive;
+          return const Color(0xFF746C8F);
         }),
       ),
       checkboxTheme: CheckboxThemeData(
@@ -416,14 +416,14 @@ abstract final class AppTheme {
         checkColor: WidgetStatePropertyAll(
           isDark ? tokens.onAccent : tokens.onGradientHeading,
         ),
-        side: BorderSide(color: tokens.iconInactive, width: 1.5),
+        side: const BorderSide(color: Color(0xFF746C8F), width: 1.5),
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return isDark ? tokens.onAccent : tokens.onGradientHeading;
           }
-          return tokens.body;
+          return const Color(0xFF746C8F);
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return tokens.primary;
@@ -431,7 +431,7 @@ abstract final class AppTheme {
         }),
         trackOutlineColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return tokens.primary;
-          return tokens.iconInactive;
+          return const Color(0xFF746C8F);
         }),
       ),
       chipTheme: ChipThemeData(
