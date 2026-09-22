@@ -3,6 +3,7 @@ import 'package:shared_types/shared_types.dart';
 
 import '../spacing.dart';
 import '../theme/udm_colors.dart';
+import '../theme/zfile_tokens.dart';
 
 /// Formats bytes into human-readable string.
 String _formatBytes(int bytes, {int decimals = 1}) {
@@ -50,6 +51,7 @@ class SegmentVisualizerWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final tokens = ZfileTokens.of(context);
     final percent = totalBytes > 0
         ? (downloadedBytes / totalBytes * 100).clamp(0.0, 100.0)
         : 0.0;
@@ -78,14 +80,14 @@ class SegmentVisualizerWidget extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: UdmColors.signalCyan.withValues(alpha: 0.1),
+                  color: tokens.secondary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: UdmColors.signalCyan.withValues(alpha: 0.2),
+                    color: tokens.secondary.withValues(alpha: 0.2),
                   ),
                 ),
                 child: Icon(Icons.layers_rounded,
-                    size: 14, color: UdmColors.signalCyan),
+                    size: 14, color: tokens.secondary),
               ),
               const SizedBox(width: UdmSpacing.sm),
               Expanded(
@@ -115,7 +117,7 @@ class SegmentVisualizerWidget extends StatelessWidget {
               Text(
                 _formatSpeed(speed),
                 style: theme.textTheme.labelSmall?.copyWith(
-                  color: UdmColors.signalCyan,
+                  color: tokens.secondary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -123,7 +125,7 @@ class SegmentVisualizerWidget extends StatelessWidget {
               Text(
                 etaSeconds > 0 ? _formatEta(etaSeconds) : '--',
                 style: theme.textTheme.labelSmall?.copyWith(
-                  color: UdmColors.successMoss,
+                  color: tokens.secondaryDark,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -170,8 +172,8 @@ class SegmentVisualizerWidget extends StatelessWidget {
                         widthFactor: segPercent,
                         child: Container(
                           color: segPercent >= 1.0
-                              ? UdmColors.successMoss
-                              : UdmColors.signalCyan,
+                              ? tokens.secondaryDark
+                              : tokens.secondary,
                         ),
                       ),
                     ),
@@ -229,6 +231,7 @@ class _SegmentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final tokens = ZfileTokens.of(context);
     final percent = segment.progress;
     final isComplete = percent >= 1.0;
 
@@ -265,9 +268,9 @@ class _SegmentCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                 decoration: BoxDecoration(
                   color: isComplete
-                      ? UdmColors.successMoss.withValues(alpha: 0.2)
+                      ? tokens.secondaryDark.withValues(alpha: 0.2)
                       : isParentDownloading
-                          ? UdmColors.signalCyan.withValues(alpha: 0.2)
+                          ? tokens.secondary.withValues(alpha: 0.2)
                           : (isDark ? UdmColors.voidGraphite : UdmColors.paper),
                   borderRadius: BorderRadius.circular(3),
                 ),
@@ -279,9 +282,9 @@ class _SegmentCard extends StatelessWidget {
                     fontSize: 9,
                     fontWeight: FontWeight.w600,
                     color: isComplete
-                        ? UdmColors.successMoss
+                        ? tokens.secondaryDark
                         : isParentDownloading
-                            ? UdmColors.signalCyan
+                            ? tokens.secondary
                             : (isDark ? UdmColors.fogSteel : UdmColors.slateMute),
                   ),
                 ),
@@ -298,7 +301,7 @@ class _SegmentCard extends StatelessWidget {
               backgroundColor:
                   isDark ? UdmColors.hairline : UdmColors.lightHairline,
               valueColor: AlwaysStoppedAnimation(
-                isComplete ? UdmColors.successMoss : UdmColors.signalCyan,
+                isComplete ? tokens.secondaryDark : tokens.secondary,
               ),
             ),
           ),

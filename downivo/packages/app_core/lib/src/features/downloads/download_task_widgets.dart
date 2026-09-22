@@ -34,7 +34,7 @@ class DownloadProgressDetails extends StatelessWidget {
         const SizedBox(height: UdmSpacing.xs),
         LinearProgressIndicator(
           value: showDeterminate ? task.progress : null,
-          color: _progressColor(task.status),
+          color: _progressColor(context, task.status),
         ),
         const SizedBox(height: UdmSpacing.xs),
         Text(_statusLabel(task, pct), style: style),
@@ -57,12 +57,15 @@ class DownloadProgressDetails extends StatelessWidget {
     );
   }
 
-  Color? _progressColor(DownloadStatus status) => switch (status) {
-    DownloadStatus.paused || DownloadStatus.verifying => UdmColors.cautionAmber,
-    DownloadStatus.failed => UdmColors.faultCoral,
-    DownloadStatus.completed => UdmColors.successMoss,
-    _ => null,
-  };
+  Color? _progressColor(BuildContext context, DownloadStatus status) {
+    final tokens = ZfileTokens.of(context);
+    return switch (status) {
+      DownloadStatus.paused || DownloadStatus.verifying => UdmColors.cautionAmber,
+      DownloadStatus.failed => UdmColors.faultCoral,
+      DownloadStatus.completed => tokens.secondaryDark,
+      _ => null,
+    };
+  }
 
   String _statusLabel(DownloadTask task, String pct) {
     final connLabel = task.connectionCount > 1
@@ -425,7 +428,7 @@ class _TaskThumb extends StatelessWidget {
       return _MimeWell(fileName: task.fileName, mimeType: task.mimeType);
     }
     return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(UdmRadius.icon),
       child: SizedBox(
         width: 56,
         height: 56,
@@ -449,15 +452,19 @@ class _MimeWell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = ZfileTokens.of(context);
+    final swatch = tokens.swatch(
+      zfileCategoryKey(mimeType: mimeType, fileName: fileName),
+    );
     return Container(
       width: 56,
       height: 56,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Theme.of(context).colorScheme.outline),
+        color: swatch.background,
+        borderRadius: BorderRadius.circular(UdmRadius.icon),
       ),
-      child: Icon(_icon, color: Theme.of(context).colorScheme.primary),
+      child: Icon(_icon, color: swatch.icon),
     );
   }
 

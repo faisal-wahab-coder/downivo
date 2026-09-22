@@ -299,7 +299,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   : Icons.check_circle_outline,
               color: task.isRemovedFromLibrary
                   ? UdmColors.cautionAmber
-                  : UdmColors.successMoss,
+                  : ZfileTokens.of(context).secondaryDark,
             ),
             title: Text(
               task.fileName,

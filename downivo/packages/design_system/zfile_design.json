@@ -1,0 +1,332 @@
+{
+  "name": "Zfile Cloud Storage App Style",
+  "description": "A playful, rounded mobile-app UI kit for a file/cloud storage manager: deep violet primary with a mint-teal accent, soft pastel category tiles, and gradient file thumbnails. Supports light and dark themes via shared semantic color tokens — spacing, type scale, radii, and structure stay identical across themes; only token values change.",
+
+  "themeTokenGuide": "Every color used across 'components' and 'structure' is expressed as a token path (e.g. 'background.surface', 'text.heading', 'category.images.icon'). Resolve a token by looking it up in themes.light.* or themes.dark.* depending on the active theme.",
+
+  "themes": {
+    "light": {
+      "background": {
+        "canvas": "#F5F4FA",
+        "surface": "#FFFFFF",
+        "surfaceElevated": "#FFFFFF",
+        "header": "#6C4CE0",
+        "onboarding": "#6C4CE0"
+      },
+      "gradient": {
+        "heroStart": "#8B6BF2",
+        "heroEnd": "#5F3FDB"
+      },
+      "text": {
+        "heading": "#211D33",
+        "body": "#8B879C",
+        "muted": "#B3AFC4",
+        "onAccent": "#12233A",
+        "onGradientHeading": "#FFFFFF",
+        "onGradientBody": "rgba(255,255,255,0.8)"
+      },
+      "accent": {
+        "primary": "#6C4CE0",
+        "primaryDark": "#5636C4",
+        "primaryLight": "#8E6FF7",
+        "secondary": "#22D3B0",
+        "secondaryDark": "#12B597",
+        "secondaryLight": "#7CEFDB"
+      },
+      "border": {
+        "default": "#EDEBF5",
+        "subtle": "#F5F4FA"
+      },
+      "icon": {
+        "inactive": "#8B879C",
+        "activeBg": "#22D3B0",
+        "activeFg": "#12233A"
+      },
+      "chart": {
+        "barDefault": "#B6A6F7",
+        "barActive": "#6C4CE0",
+        "trackBg": "#EDEBF5",
+        "fillBg": "#22D3B0"
+      },
+      "category": {
+        "images": { "icon": "#F5A623", "background": "#FDF0DD" },
+        "videos": { "icon": "#22B8D6", "background": "#DEF6FB" },
+        "audio": { "icon": "#8E6FF7", "background": "#EFE9FE" },
+        "documents": { "icon": "#5B5BE0", "background": "#E7E7FC" },
+        "apps": { "icon": "#EC4899", "background": "#FCE5F1" },
+        "other": { "icon": "#9CA3AF", "background": "#EFEFF3" }
+      },
+      "fileThumbnailGradients": [
+        ["#7B5EF5", "#3A2E8F"],
+        ["#E84EA0", "#5B2E8F"],
+        ["#3ED0D6", "#4A5FE0"],
+        ["#5F3FDB", "#1E1533"],
+        ["#C93BD1", "#5C2C8F"],
+        ["#E8546B", "#8B2E8F"]
+      ],
+      "shadow": {
+        "card": "0px 8px 20px rgba(108,76,224,0.08)",
+        "floating": "0px 12px 32px rgba(33,29,51,0.12)",
+        "buttonGlow": "0px 6px 16px rgba(34,211,176,0.35)",
+        "phoneMockup": "0px 24px 48px rgba(0,0,0,0.18)"
+      },
+      "statusBar": {
+        "iconColorOnHeader": "#FFFFFF",
+        "iconColorOnCanvas": "#211D33"
+      }
+    },
+
+    "dark": {
+      "background": {
+        "canvas": "#141020",
+        "surface": "#1E1830",
+        "surfaceElevated": "#241D3B",
+        "header": "#4C3AAE",
+        "onboarding": "#4C3AAE"
+      },
+      "gradient": {
+        "heroStart": "#6B4FE0",
+        "heroEnd": "#382A82"
+      },
+      "text": {
+        "heading": "#F2F0FA",
+        "body": "#A79FC0",
+        "muted": "#746C8F",
+        "onAccent": "#12233A",
+        "onGradientHeading": "#FFFFFF",
+        "onGradientBody": "rgba(255,255,255,0.75)"
+      },
+      "accent": {
+        "primary": "#8E6FF7",
+        "primaryDark": "#6C4CE0",
+        "primaryLight": "#B3A0FF",
+        "secondary": "#2EE6C0",
+        "secondaryDark": "#22D3B0",
+        "secondaryLight": "#7CEFDB"
+      },
+      "border": {
+        "default": "#342C4D",
+        "subtle": "#2A2440"
+      },
+      "icon": {
+        "inactive": "#746C8F",
+        "activeBg": "#2EE6C0",
+        "activeFg": "#12233A"
+      },
+      "chart": {
+        "barDefault": "#4B4270",
+        "barActive": "#8E6FF7",
+        "trackBg": "#342C4D",
+        "fillBg": "#2EE6C0"
+      },
+      "category": {
+        "images": { "icon": "#FFB84D", "background": "#3A2E1A" },
+        "videos": { "icon": "#4DD9F2", "background": "#16333A" },
+        "audio": { "icon": "#A78BFA", "background": "#2C2450" },
+        "documents": { "icon": "#8482FF", "background": "#262260" },
+        "apps": { "icon": "#F472B6", "background": "#3A1F30" },
+        "other": { "icon": "#B8B8C4", "background": "#2A2836" }
+      },
+      "fileThumbnailGradients": [
+        ["#6B4FE0", "#241A5C"],
+        ["#B33A85", "#3D1F5F"],
+        ["#2AA0AE", "#33409E"],
+        ["#4A2FAE", "#150F26"],
+        ["#9A2CA3", "#3D1D5F"],
+        ["#B03B4E", "#5C1F5F"]
+      ],
+      "shadow": {
+        "card": "0px 8px 20px rgba(0,0,0,0.35)",
+        "floating": "0px 12px 32px rgba(0,0,0,0.5)",
+        "buttonGlow": "0px 6px 18px rgba(46,230,192,0.4)",
+        "phoneMockup": "0px 24px 48px rgba(0,0,0,0.6)"
+      },
+      "statusBar": {
+        "iconColorOnHeader": "#FFFFFF",
+        "iconColorOnCanvas": "#F2F0FA"
+      }
+    }
+  },
+
+  "typography": {
+    "fontFamilies": {
+      "heading": "'Poppins', 'SF Pro Rounded', 'Circular Std', Arial, sans-serif",
+      "body": "'Inter', 'SF Pro Text', Arial, sans-serif",
+      "numeric": "'Poppins', sans-serif"
+    },
+    "fontWeights": {
+      "regular": 400,
+      "medium": 500,
+      "semibold": 600,
+      "bold": 700
+    },
+    "scale": {
+      "onboardingHeadline": { "size": "24px", "lineHeight": "1.25", "weight": 700, "color": "text.heading" },
+      "onboardingSubtext": { "size": "13px", "lineHeight": "1.5", "weight": 400, "color": "text.body" },
+      "screenTitle": { "size": "16px", "lineHeight": "1.3", "weight": 600, "color": "text.heading" },
+      "cardStat": { "size": "22px", "lineHeight": "1.2", "weight": 700, "color": "text.heading" },
+      "cardStatLabel": { "size": "12px", "lineHeight": "1.4", "weight": 400, "color": "text.body" },
+      "sectionHeader": { "size": "15px", "lineHeight": "1.3", "weight": 600, "color": "text.heading" },
+      "tileLabel": { "size": "13px", "lineHeight": "1.4", "weight": 500, "color": "text.heading" },
+      "tileMeta": { "size": "11px", "lineHeight": "1.4", "weight": 400, "color": "text.muted" },
+      "listItemTitle": { "size": "13px", "lineHeight": "1.4", "weight": 600, "color": "text.heading" },
+      "listItemMeta": { "size": "11px", "lineHeight": "1.4", "weight": 400, "color": "text.muted" },
+      "buttonLabel": { "size": "14px", "lineHeight": "1", "weight": 600 },
+      "chartDayLabel": { "size": "10px", "lineHeight": "1.2", "weight": 400, "color": "text.muted" },
+      "statusBarTime": { "size": "13px", "lineHeight": "1", "weight": 600 }
+    }
+  },
+
+  "spacingScale": {
+    "unit": "4px",
+    "scale": {
+      "xxs": "4px",
+      "xs": "8px",
+      "sm": "12px",
+      "md": "16px",
+      "lg": "20px",
+      "xl": "24px",
+      "2xl": "32px",
+      "3xl": "40px"
+    },
+    "screenPadding": "16px",
+    "cardPadding": "16px",
+    "cardPaddingLarge": "20px",
+    "gridGap": "12px",
+    "listItemGap": "12px",
+    "sectionSpacing": "24px",
+    "bottomNavHeight": "64px",
+    "topNavHeight": "56px"
+  },
+
+  "borderRadius": {
+    "sm": "10px",
+    "md": "16px",
+    "lg": "20px",
+    "xl": "28px",
+    "pill": "999px",
+    "circle": "50%",
+    "usage": {
+      "phoneFrame": "48px",
+      "heroCard": "28px",
+      "statCard": "24px",
+      "listItemCard": "16px",
+      "categoryTile": "18px",
+      "fileThumbnail": "16px",
+      "iconSquircle": "14px",
+      "primaryButton": "999px",
+      "bottomNavActiveIcon": "16px",
+      "avatarOrBadge": "50%"
+    }
+  },
+
+  "structure": {
+    "layoutType": "mobile app UI kit — 3 phone-frame screens shown side by side",
+    "screens": [
+      {
+        "name": "Onboarding",
+        "background": "background.onboarding (solid violet)",
+        "elements": [
+          "3D isometric illustration (folder, photos, chart icons floating)",
+          "translucent bottom sheet card using background.surfaceElevated at reduced opacity, rounded top corners",
+          "bold headline (2 lines) in text.onGradientHeading",
+          "short supporting paragraph in text.onGradientBody",
+          "pagination dots",
+          "full-width pill CTA button using accent.secondary background, text.onAccent label"
+        ]
+      },
+      {
+        "name": "Dashboard / Storage Summary",
+        "background": "background.canvas",
+        "elements": [
+          "top nav: logo + wordmark, search icon, notification bell (icons in text.heading)",
+          "hero card: gradient.heroStart to gradient.heroEnd, donut progress ring (chart.trackBg / chart.fillBg), percentage label, used/free storage text in text.onGradientHeading/Body, 'Manage' pill button in accent.secondary anchored bottom-right",
+          "'Activity' section header with overflow menu",
+          "bar-chart card on background.surfaceElevated: 7-day bars using chart.barDefault / chart.barActive",
+          "'Recent Files' section header",
+          "recent file list row on background.surface: icon squircle (category token), filename in text.heading, filesize/timestamp in text.muted",
+          "bottom nav bar on background.surface: icons in icon.inactive, active icon as filled squircle using icon.activeBg / icon.activeFg"
+        ]
+      },
+      {
+        "name": "File Categories / Storage Detail",
+        "background": "background.canvas under background.header bar",
+        "elements": [
+          "header bar (background.header) with screen title, search icon, menu icon in statusBar.iconColorOnHeader",
+          "summary card on background.surface overlapping header: colorful stacked icon, 'X GB used' stat in text.heading, thin progress bar (chart.trackBg / chart.fillBg)",
+          "2-column category tile grid: each tile icon+background pulled from category.* tokens, label in text.heading, count in text.muted",
+          "'Big Files' section header with overflow menu",
+          "2-column x 3-row thumbnail grid using fileThumbnailGradients, play/file-type icon overlay, filesize + filename caption in text.onGradientBody"
+        ]
+      }
+    ],
+    "decorativeMotifs": [
+      "3D isometric illustration style with soft ambient shadows and flat-shaded icons",
+      "circular donut/ring progress indicators",
+      "gradient-filled thumbnail tiles for visual variety in file grids",
+      "translucent glass card floating over illustration on onboarding",
+      "consistent squircle icon containers across all icon usage"
+    ]
+  },
+
+  "components": {
+    "button": {
+      "primaryPill": { "shape": "pill", "background": "accent.secondary", "text": "text.onAccent", "padding": "14px 24px", "width": "full or auto", "shadow": "shadow.buttonGlow" }
+    },
+    "card": {
+      "heroGradient": { "background": "linear-gradient(135deg, gradient.heroStart, gradient.heroEnd)", "radius": "28px", "padding": "20px", "textColor": "text.onGradientHeading" },
+      "statCard": { "background": "background.surface", "radius": "24px", "padding": "16px", "shadow": "shadow.card" },
+      "listItem": { "background": "background.surface", "radius": "16px", "padding": "12px 16px", "iconContainer": "squircle" }
+    },
+    "categoryTile": {
+      "shape": "rounded square",
+      "radius": "18px",
+      "background": "category.[name].background",
+      "iconColor": "category.[name].icon",
+      "iconContainer": { "shape": "squircle", "size": "40px", "radius": "14px" },
+      "layout": "icon left, label + count stacked right"
+    },
+    "fileThumbnail": {
+      "shape": "rounded square",
+      "radius": "16px",
+      "fill": "fileThumbnailGradients[n]",
+      "overlayIcon": "play or file-type glyph, top-left",
+      "caption": "filesize + filename below or overlaid at bottom, text.onGradientBody"
+    },
+    "donutProgress": {
+      "trackColor": "chart.trackBg",
+      "fillColor": "chart.fillBg",
+      "strokeWidth": "10px",
+      "centerLabel": "percentage, bold, large, text.onGradientHeading"
+    },
+    "barChart": {
+      "barColor": "chart.barDefault",
+      "barColorActive": "chart.barActive",
+      "barRadius": "6px 6px 0 0",
+      "axisLabels": "day-of-week abbreviations, chartDayLabel style"
+    },
+    "bottomNav": {
+      "background": "background.surface",
+      "iconColorInactive": "icon.inactive",
+      "activeIcon": { "shape": "squircle", "background": "icon.activeBg", "iconColor": "icon.activeFg" }
+    },
+    "phoneFrame": {
+      "cornerRadius": "48px",
+      "bezelColor": "#1A1A1E",
+      "notchStyle": "dynamic-island pill cutout"
+    }
+  },
+
+  "grid": {
+    "categoryGrid": { "columns": 2, "gap": "12px" },
+    "fileThumbnailGrid": { "columns": 3, "gap": "10px" },
+    "barChartGrid": { "columns": 7, "gap": "6px" }
+  },
+
+  "motionAndTone": {
+    "personality": "friendly, modern, tech-productivity, slightly playful",
+    "imagery": "flat 3D isometric illustrations with soft ambient shadows",
+    "iconStyle": "filled/duotone rounded icons inside soft squircle containers",
+    "themeSwitchNote": "Illustrations and gradient hero cards keep roughly the same hue family across themes (just deepened for dark mode) so brand identity stays recognizable; only surfaces, text, and category tile backgrounds swap for contrast."
+  }
+}

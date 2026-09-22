@@ -409,13 +409,14 @@ class _DownloadTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = ZfileTokens.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: UdmSpacing.sm),
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(UdmRadius.card),
           border: selected
-              ? Border.all(color: UdmColors.signalCyan, width: 1.5)
+              ? Border.all(color: tokens.secondary, width: 1.5)
               : null,
         ),
         child: DownloadTaskCard(task: task, ref: ref, onTap: onSelect),
@@ -433,6 +434,7 @@ class _DownloadDetailPane extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tokens = ZfileTokens.of(context);
 
     return ListView(
       padding: const EdgeInsets.all(UdmSpacing.lg),
@@ -461,17 +463,17 @@ class _DownloadDetailPane extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: UdmColors.electricBlue.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(6),
+                  color: tokens.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(UdmRadius.button),
                   border: Border.all(
-                      color: UdmColors.electricBlue.withValues(alpha: 0.3)),
+                      color: tokens.primary.withValues(alpha: 0.3)),
                 ),
                 child: Text(
                   '${task.connectionCount} connections',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: UdmColors.electricBlue,
+                    color: tokens.primary,
                   ),
                 ),
               ),
@@ -481,7 +483,7 @@ class _DownloadDetailPane extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: UdmColors.cautionAmber.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(UdmRadius.button),
                 ),
                 child: Text(
                   'Reloaded ×${task.reloadCount}',
@@ -535,9 +537,9 @@ class _DownloadDetailPane extends StatelessWidget {
             padding: const EdgeInsets.all(UdmSpacing.md),
             decoration: BoxDecoration(
               color: isDark ? UdmColors.insetWell : UdmColors.paper,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(UdmRadius.card),
               border: Border.all(
-                color: UdmColors.successMoss.withValues(alpha: 0.3),
+                color: tokens.secondaryDark.withValues(alpha: 0.3),
               ),
             ),
             child: Column(
@@ -546,14 +548,14 @@ class _DownloadDetailPane extends StatelessWidget {
                 Row(
                   children: [
                     Icon(Icons.verified_rounded,
-                        size: 14, color: UdmColors.successMoss),
+                        size: 14, color: tokens.secondaryDark),
                     const SizedBox(width: 6),
                     Text(
                       'Verified',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: UdmColors.successMoss,
+                        color: tokens.secondaryDark,
                       ),
                     ),
                   ],

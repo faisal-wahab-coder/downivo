@@ -93,7 +93,7 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: UdmColors.signalCyan,
+                              color: ZfileTokens.of(context).secondary,
                               width: 2,
                             ),
                           ),

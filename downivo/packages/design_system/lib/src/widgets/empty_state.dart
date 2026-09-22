@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../spacing.dart';
+import '../theme/zfile_tokens.dart';
 
 class EmptyState extends StatelessWidget {
   const EmptyState({
@@ -21,16 +22,22 @@ class EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final tokens = ZfileTokens.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(UdmSpacing.xxxl),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 64,
-              color: theme.colorScheme.primary.withValues(alpha: 0.7),
+            Container(
+              width: 72,
+              height: 72,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: tokens.primaryContainer,
+                borderRadius: BorderRadius.circular(UdmRadius.tile),
+              ),
+              child: Icon(icon, size: 32, color: tokens.primary),
             ),
             const SizedBox(height: UdmSpacing.xxl),
             Text(

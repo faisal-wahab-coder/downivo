@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../spacing.dart';
 import '../theme/udm_colors.dart';
+import '../theme/zfile_tokens.dart';
 
 /// Dialog showing SHA-256 and MD5 checksums for a completed download.
 class ChecksumDialog extends StatefulWidget {
@@ -61,6 +62,7 @@ class _ChecksumDialogState extends State<ChecksumDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final tokens = ZfileTokens.of(context);
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -77,11 +79,11 @@ class _ChecksumDialogState extends State<ChecksumDialog> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: UdmColors.successMoss.withValues(alpha: 0.15),
+                      color: tokens.secondaryDark.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(Icons.verified_user_rounded,
-                        size: 20, color: UdmColors.successMoss),
+                        size: 20, color: tokens.secondaryDark),
                   ),
                   const SizedBox(width: UdmSpacing.md),
                   Expanded(
@@ -138,23 +140,23 @@ class _ChecksumDialogState extends State<ChecksumDialog> {
               Container(
                 padding: const EdgeInsets.all(UdmSpacing.md),
                 decoration: BoxDecoration(
-                  color: UdmColors.successMoss.withValues(alpha: 0.1),
+                  color: tokens.secondaryDark.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: UdmColors.successMoss.withValues(alpha: 0.3),
+                    color: tokens.secondaryDark.withValues(alpha: 0.3),
                   ),
                 ),
                 child: Row(
                   children: [
                     Icon(Icons.check_circle_rounded,
-                        size: 16, color: UdmColors.successMoss),
+                        size: 16, color: tokens.secondaryDark),
                     const SizedBox(width: UdmSpacing.sm),
                     Expanded(
                       child: Text(
                         'File integrity confirmed. Zero corruption detected.',
                         style: TextStyle(
                           fontSize: 12,
-                          color: UdmColors.successMoss,
+                          color: tokens.secondaryDark,
                         ),
                       ),
                     ),
@@ -196,6 +198,7 @@ class _HashField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = ZfileTokens.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -225,7 +228,7 @@ class _HashField extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10,
                     fontFamily: 'monospace',
-                    color: UdmColors.successMoss,
+                    color: tokens.secondaryDark,
                   ),
                 ),
               ),
@@ -236,7 +239,7 @@ class _HashField extends StatelessWidget {
                 onPressed: onCopy,
                 icon: Icon(
                   copied ? Icons.check_rounded : Icons.copy_rounded,
-                  color: copied ? UdmColors.successMoss : UdmColors.fogSteel,
+                  color: copied ? tokens.secondaryDark : UdmColors.fogSteel,
                 ),
               ),
             ],

@@ -202,12 +202,22 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
   }
 }
 
+SliverGridDelegate _folderGridDelegate(BuildContext context) {
+  final wide = MediaQuery.sizeOf(context).width >= UdmBreakpoints.desktop;
+  return SliverGridDelegateWithFixedCrossAxisCount(
+    crossAxisCount: wide ? 3 : 2,
+    mainAxisSpacing: UdmSpacing.gridGap,
+    crossAxisSpacing: UdmSpacing.gridGap,
+    mainAxisExtent: 152,
+  );
+}
+
 SliverGridDelegate _galleryGridDelegate(BuildContext context) {
   final wide = MediaQuery.sizeOf(context).width >= UdmBreakpoints.desktop;
   return SliverGridDelegateWithFixedCrossAxisCount(
     crossAxisCount: wide ? 3 : 2,
-    mainAxisSpacing: 8,
-    crossAxisSpacing: 8,
+    mainAxisSpacing: UdmSpacing.gridGap,
+    crossAxisSpacing: UdmSpacing.gridGap,
     childAspectRatio: 1,
   );
 }
@@ -291,24 +301,65 @@ class _BrowseView extends ConsumerWidget {
           );
         }
 
-        return grid
-            ? GridView.builder(
+        if (!grid) {
+          final itemCount = page.folders.length + page.files.length;
+          return ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: itemCount,
+            separatorBuilder: (_, _) =>
+                const SizedBox(height: UdmSpacing.listItemGap),
+            itemBuilder: (context, index) {
+              if (index < page.folders.length) {
+                final folder = page.folders[index];
+                return _FolderTile(
+                  folder: folder,
+                  onTap: () {
+                    ref.read(libraryLocationProvider.notifier).state =
+                        folder.location;
+                  },
+                );
+              }
+              final file = page.files[index - page.folders.length];
+              return _FileTile(
+                file: file,
+                onTap: () => onOpenFile(file),
+                onMore: () => _openActions(context, ref, file),
+                onDelete: () => _deleteFile(context, ref, file),
+              );
+            },
+          );
+        }
+
+        return Column(
+          children: [
+            if (page.folders.isNotEmpty)
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: _folderGridDelegate(context),
+                itemCount: page.folders.length,
+                itemBuilder: (context, index) {
+                  final folder = page.folders[index];
+                  return _FolderGridTile(
+                    folder: folder,
+                    onTap: () {
+                      ref.read(libraryLocationProvider.notifier).state =
+                          folder.location;
+                    },
+                  );
+                },
+              ),
+            if (page.folders.isNotEmpty && page.files.isNotEmpty)
+              const SizedBox(height: UdmSpacing.gridGap),
+            if (page.files.isNotEmpty)
+              GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 gridDelegate: _galleryGridDelegate(context),
-                itemCount: page.folders.length + page.files.length,
+                itemCount: page.files.length,
                 itemBuilder: (context, index) {
-                  if (index < page.folders.length) {
-                    final folder = page.folders[index];
-                    return _FolderTile(
-                      folder: folder,
-                      onTap: () {
-                        ref.read(libraryLocationProvider.notifier).state =
-                            folder.location;
-                      },
-                    );
-                  }
-                  final file = page.files[index - page.folders.length];
+                  final file = page.files[index];
                   return _FileGridTile(
                     file: file,
                     onTap: () => onOpenFile(file),
@@ -316,32 +367,9 @@ class _BrowseView extends ConsumerWidget {
                     onDelete: () => _deleteFile(context, ref, file),
                   );
                 },
-              )
-            : ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: page.folders.length + page.files.length,
-                itemBuilder: (context, index) {
-                  if (index < page.folders.length) {
-                    final folder = page.folders[index];
-                    return _FolderTile(
-                      folder: folder,
-                      onTap: () {
-                        ref.read(libraryLocationProvider.notifier).state =
-                            folder.location;
-                      },
-                    );
-                  }
-
-                  final file = page.files[index - page.folders.length];
-                  return _FileTile(
-                    file: file,
-                    onTap: () => onOpenFile(file),
-                    onMore: () => _openActions(context, ref, file),
-                    onDelete: () => _deleteFile(context, ref, file),
-                  );
-                },
-              );
+              ),
+          ],
+        );
       },
     );
   }
@@ -418,10 +446,12 @@ class _SearchResults extends ConsumerWidget {
                   );
                 },
               )
-            : ListView.builder(
+            : ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: files.length,
+                separatorBuilder: (_, _) =>
+                    const SizedBox(height: UdmSpacing.listItemGap),
                 itemBuilder: (context, index) {
                   final file = files[index];
                   return _FileTile(
@@ -463,6 +493,29 @@ class _SearchResults extends ConsumerWidget {
   }
 }
 
+String _folderCategoryKey(LibraryFolder folder) => switch (folder.location.category) {
+  StorageCategory.videos => 'videos',
+  StorageCategory.images => 'images',
+  StorageCategory.audio => 'audio',
+  StorageCategory.documents => 'documents',
+  StorageCategory.apk => 'apps',
+  _ => 'other',
+};
+
+IconData _folderIcon(LibraryFolder folder) => switch (folder.location.category) {
+  StorageCategory.videos => Icons.movie_outlined,
+  StorageCategory.images => Icons.image_outlined,
+  StorageCategory.audio => Icons.audiotrack_outlined,
+  StorageCategory.documents => Icons.description_outlined,
+  StorageCategory.apk => Icons.android_outlined,
+  StorageCategory.archives => Icons.folder_zip_outlined,
+  StorageCategory.qrDownloads => Icons.qr_code_2_outlined,
+  _ => Icons.folder_outlined,
+};
+
+String _folderCountLabel(LibraryFolder folder) =>
+    '${folder.itemCount} item${folder.itemCount == 1 ? '' : 's'}';
+
 class _FolderTile extends StatelessWidget {
   const _FolderTile({required this.folder, required this.onTap});
 
@@ -471,16 +524,123 @@ class _FolderTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        leading: const Icon(Icons.folder_outlined),
-        title: Text(folder.name),
-        subtitle: Text(
-          '${folder.itemCount} item${folder.itemCount == 1 ? '' : 's'}',
-        ),
-        trailing: const Icon(Icons.chevron_right),
+    final tokens = ZfileTokens.of(context);
+    final theme = Theme.of(context);
+    final swatch = tokens.swatch(_folderCategoryKey(folder));
+    return Material(
+      color: swatch.background,
+      borderRadius: BorderRadius.circular(UdmRadius.tile),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
         onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: UdmSpacing.md,
+            vertical: UdmSpacing.md,
+          ),
+          child: Row(
+            children: [
+              _FolderIconWell(folder: folder, well: 40, glyph: 22),
+              const SizedBox(width: UdmSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      folder.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      _folderCountLabel(folder),
+                      style: theme.textTheme.labelSmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
+    );
+  }
+}
+
+class _FolderGridTile extends StatelessWidget {
+  const _FolderGridTile({required this.folder, required this.onTap});
+
+  final LibraryFolder folder;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = ZfileTokens.of(context);
+    final theme = Theme.of(context);
+    final swatch = tokens.swatch(_folderCategoryKey(folder));
+    return Material(
+      color: swatch.background,
+      borderRadius: BorderRadius.circular(UdmRadius.tile),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(UdmSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _FolderIconWell(folder: folder, well: 56, glyph: 28),
+              const SizedBox(height: UdmSpacing.md),
+              Text(
+                folder.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: tokens.heading,
+                ),
+              ),
+              Text(
+                _folderCountLabel(folder),
+                style: theme.textTheme.labelSmall?.copyWith(color: tokens.muted),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FolderIconWell extends StatelessWidget {
+  const _FolderIconWell({
+    required this.folder,
+    required this.well,
+    required this.glyph,
+  });
+
+  final LibraryFolder folder;
+  final double well;
+  final double glyph;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = ZfileTokens.of(context);
+    final swatch = tokens.swatch(_folderCategoryKey(folder));
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: well,
+      height: well,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: isDark
+            ? tokens.surfaceElevated
+            : tokens.surface.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(UdmRadius.icon),
+      ),
+      child: Icon(_folderIcon(folder), color: swatch.icon, size: glyph),
     );
   }
 }
@@ -500,7 +660,7 @@ class _FileGridTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final tokens = ZfileTokens.of(context);
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -520,8 +680,8 @@ class _FileGridTile extends StatelessWidget {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      scheme.scrim.withValues(alpha: 0),
-                      scheme.scrim.withValues(alpha: 0.72),
+                      tokens.onboarding.withValues(alpha: 0),
+                      tokens.onboarding.withValues(alpha: 0.72),
                     ],
                   ),
                 ),
@@ -536,8 +696,9 @@ class _FileGridTile extends StatelessWidget {
                     file.name,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onInverseSurface,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: tokens.onGradientBody,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),

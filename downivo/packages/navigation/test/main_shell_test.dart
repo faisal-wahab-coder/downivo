@@ -18,7 +18,7 @@ void main() {
     );
 
     expect(find.text('DV'), findsOneWidget);
-    expect(find.text('HOME'), findsOneWidget);
+    expect(find.text('Home'), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
   });
 
