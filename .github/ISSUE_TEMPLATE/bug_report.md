@@ -28,7 +28,7 @@ What happened instead.
 
 ## Environment
 
-- App version (e.g. `1.4.0+6`):
+- App version (e.g. `1.5.0+7`):
 - Flutter SDK (if building from source):
 - Android version / Web browser:
 - Device (or emulator):

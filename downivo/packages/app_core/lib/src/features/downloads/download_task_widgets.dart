@@ -1,13 +1,17 @@
 import 'package:analytics/analytics.dart';
 import 'package:design_system/design_system.dart';
 import 'package:download_engine/download_engine.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:media_library/media_library.dart';
 import 'package:shared_types/shared_types.dart';
 import 'package:shared_utils/shared_utils.dart';
 
 import '../../providers/analytics_providers.dart';
 import '../../providers/download_providers.dart';
+import '../../providers/library_providers.dart';
+import '../files/move_to_folder_sheet.dart';
 import '../files/open_managed_media.dart';
 
 class DownloadProgressDetails extends StatelessWidget {
@@ -60,7 +64,8 @@ class DownloadProgressDetails extends StatelessWidget {
   Color? _progressColor(BuildContext context, DownloadStatus status) {
     final tokens = ZfileTokens.of(context);
     return switch (status) {
-      DownloadStatus.paused || DownloadStatus.verifying => UdmColors.cautionAmber,
+      DownloadStatus.paused ||
+      DownloadStatus.verifying => UdmColors.cautionAmber,
       DownloadStatus.failed => UdmColors.faultCoral,
       DownloadStatus.completed => tokens.secondaryDark,
       _ => null,
@@ -74,11 +79,11 @@ class DownloadProgressDetails extends StatelessWidget {
     final warnLabel = task.isStuck
         ? ' · ⚠ Stuck (${task.stuckDurationSecs}s)'
         : task.isSlow
-            ? ' · Slow'
-            : '';
+        ? ' · Slow'
+        : '';
     return switch (task.status) {
       DownloadStatus.queued => 'Queued',
-      DownloadStatus.preparing => 'Finding video…',
+      DownloadStatus.preparing => 'Finding file…',
       DownloadStatus.downloading => 'Downloading $pct%$connLabel$warnLabel',
       DownloadStatus.paused => 'Paused at $pct%',
       DownloadStatus.completed => 'Completed',
@@ -118,7 +123,9 @@ class DownloadTrailingActions extends StatelessWidget {
             icon: const Icon(Icons.pause),
             tooltip: 'Pause',
             onPressed: () {
-              ref.read(analyticsServiceProvider).track(AnalyticsEvent.pauseClicked);
+              ref
+                  .read(analyticsServiceProvider)
+                  .track(AnalyticsEvent.pauseClicked);
               pauseDownload(ref, task.id);
             },
           ),
@@ -133,7 +140,9 @@ class DownloadTrailingActions extends StatelessWidget {
             icon: const Icon(Icons.play_arrow),
             tooltip: 'Resume',
             onPressed: () {
-              ref.read(analyticsServiceProvider).track(AnalyticsEvent.resumeClicked);
+              ref
+                  .read(analyticsServiceProvider)
+                  .track(AnalyticsEvent.resumeClicked);
               resumeDownload(ref, task.id);
             },
           ),
@@ -141,7 +150,9 @@ class DownloadTrailingActions extends StatelessWidget {
             icon: const Icon(Icons.close),
             tooltip: 'Cancel',
             onPressed: () {
-              ref.read(analyticsServiceProvider).track(AnalyticsEvent.cancelClicked);
+              ref
+                  .read(analyticsServiceProvider)
+                  .track(AnalyticsEvent.cancelClicked);
               cancelDownload(ref, task.id);
             },
           ),
@@ -159,10 +170,12 @@ class DownloadTrailingActions extends StatelessWidget {
       return IconButton(
         icon: const Icon(Icons.close),
         tooltip: 'Cancel',
-            onPressed: () {
-              ref.read(analyticsServiceProvider).track(AnalyticsEvent.cancelClicked);
-              cancelDownload(ref, task.id);
-            },
+        onPressed: () {
+          ref
+              .read(analyticsServiceProvider)
+              .track(AnalyticsEvent.cancelClicked);
+          cancelDownload(ref, task.id);
+        },
       );
     }
     if (task.status == DownloadStatus.completed && task.hasManagedFile) {
@@ -184,7 +197,9 @@ class DownloadTrailingActions extends StatelessWidget {
             icon: const Icon(Icons.share_outlined),
             tooltip: 'Share',
             onPressed: () {
-              ref.read(analyticsServiceProvider).track(AnalyticsEvent.shareClicked);
+              ref
+                  .read(analyticsServiceProvider)
+                  .track(AnalyticsEvent.shareClicked);
               shareManagedMedia(context, ref, path: task.filePath!);
             },
           ),
@@ -336,10 +351,12 @@ class DownloadTaskCard extends StatelessWidget {
     if (task.status == DownloadStatus.downloading) {
       items.add(const PopupMenuItem(value: 'pause', child: Text('Pause')));
       if (task.isStuck || task.isSlow) {
-        items.add(const PopupMenuItem(
-          value: 'reload',
-          child: Text('Reload connections'),
-        ));
+        items.add(
+          const PopupMenuItem(
+            value: 'reload',
+            child: Text('Reload connections'),
+          ),
+        );
       }
     }
     if (task.status == DownloadStatus.paused) {
@@ -353,12 +370,25 @@ class DownloadTaskCard extends StatelessWidget {
     }
     if (task.status == DownloadStatus.completed && task.hasManagedFile) {
       items.add(const PopupMenuItem(value: 'open', child: Text('Open file')));
+      if (!kIsWeb) {
+        items.add(
+          const PopupMenuItem(value: 'openWith', child: Text('Open with')),
+        );
+      }
+      items.add(
+        const PopupMenuItem(value: 'reveal', child: Text('Show in Files')),
+      );
+      items.add(
+        const PopupMenuItem(value: 'move', child: Text('Move to folder')),
+      );
       items.add(const PopupMenuItem(value: 'share', child: Text('Share')));
       if (task.checksumSha256 != null) {
-        items.add(const PopupMenuItem(
-          value: 'checksum',
-          child: Text('Verify checksum'),
-        ));
+        items.add(
+          const PopupMenuItem(
+            value: 'checksum',
+            child: Text('Verify checksum'),
+          ),
+        );
       }
     }
 
@@ -372,11 +402,9 @@ class DownloadTaskCard extends StatelessWidget {
       Offset.zero & overlay.size,
     );
 
-    showMenu<String>(
-      context: context,
-      position: position,
-      items: items,
-    ).then((value) {
+    showMenu<String>(context: context, position: position, items: items).then((
+      value,
+    ) async {
       if (value == null || !context.mounted) return;
       switch (value) {
         case 'pause':
@@ -391,6 +419,24 @@ class DownloadTaskCard extends StatelessWidget {
           manager.reloadConnections(task.id);
         case 'open':
           _handleTap(context);
+        case 'openWith':
+          await _withLibraryFile(context, (file) {
+            return openLibraryFileWithChooserUi(context, ref, file);
+          });
+        case 'reveal':
+          await _withLibraryFile(context, (file) async {
+            if (!context.mounted) return;
+            revealLibraryFile(context, ref, file);
+          });
+        case 'move':
+          await _withLibraryFile(context, (file) {
+            return showMoveToFolderSheet(
+              context: context,
+              ref: ref,
+              files: [file],
+              onChanged: () async => invalidateLibrary(ref),
+            );
+          });
         case 'share':
           shareManagedMedia(context, ref, path: task.filePath!);
         case 'checksum':
@@ -404,9 +450,26 @@ class DownloadTaskCard extends StatelessWidget {
     });
   }
 
+  Future<void> _withLibraryFile(
+    BuildContext context,
+    Future<void> Function(LibraryFile file) action,
+  ) async {
+    final path = task.filePath;
+    if (path == null) return;
+    final file = await ref.read(mediaLibraryServiceProvider).fileAt(path);
+    if (!context.mounted) return;
+    if (file == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('File not found on disk.')));
+      return;
+    }
+    await action(file);
+  }
+
   String _chipLabel(DownloadTask task, String pct) => switch (task.status) {
     DownloadStatus.queued => 'Queued',
-    DownloadStatus.preparing => 'Finding video',
+    DownloadStatus.preparing => 'Finding file',
     DownloadStatus.downloading => 'Downloading',
     DownloadStatus.paused => 'Paused',
     DownloadStatus.completed => 'Completed',

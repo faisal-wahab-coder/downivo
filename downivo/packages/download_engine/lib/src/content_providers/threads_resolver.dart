@@ -64,10 +64,6 @@ class ThreadsResolver {
         contentId: contentId,
       );
       if (resources.isNotEmpty) return resources;
-
-      if (detectMediaType(html) == ThreadsMediaType.text) {
-        throw ArgumentError(userFacingError(pageUrl, html: html));
-      }
     }
 
     if (!sawOkHtml && lastBadHtml != null) {
@@ -861,19 +857,46 @@ class ThreadsResolver {
 
   static String? _postScopedHtml(String html, String? postId) {
     if (postId == null || postId.isEmpty) return null;
-    var idx = html.indexOf('"code":"$postId"');
-    if (idx < 0) idx = html.indexOf('"code": "$postId"');
-    if (idx < 0) idx = _indexNearMedia(html, postId);
-    if (idx < 0) idx = html.indexOf('"$postId"');
-    if (idx < 0) idx = html.indexOf(postId);
+    String? emptyRecord;
+    var searchFrom = 0;
+    while (searchFrom < html.length) {
+      var idx = html.indexOf('"code":"$postId"', searchFrom);
+      if (idx < 0) idx = html.indexOf('"code": "$postId"', searchFrom);
+      if (idx < 0) break;
+      final object = _jsonObjectWithMedia(html, idx);
+      if (object != null && _objectHasDownloadableMedia(object)) {
+        return object;
+      }
+      emptyRecord ??= object;
+      searchFrom = idx + postId.length;
+    }
+    final near = _indexNearMedia(html, postId);
+    if (near >= 0) {
+      final object = _jsonObjectWithMedia(html, near);
+      if (object != null && _objectHasDownloadableMedia(object)) {
+        return object;
+      }
+      emptyRecord ??= object;
+    }
+    if (emptyRecord != null) return emptyRecord;
+    final loose = html.indexOf('"$postId"');
+    final idx = loose >= 0 ? loose : html.indexOf(postId);
     if (idx < 0) return null;
-    return _jsonObjectWithMedia(html, idx) ?? _windowAround(html, idx);
+    return _windowAround(html, idx);
   }
 
   static String _windowAround(String html, int idx) {
     final start = idx - 30000 < 0 ? 0 : idx - 30000;
     final end = idx + 50000 > html.length ? html.length : idx + 50000;
     return html.substring(start, end);
+  }
+
+  /// True when a post object exposes a file URL, not an empty
+  /// `image_versions2.candidates` / `video_versions: null` stub.
+  static bool _objectHasDownloadableMedia(String object) {
+    if (_videoVersionsArrayPattern.hasMatch(object)) return true;
+    if (_carouselArrayPattern.hasMatch(object)) return true;
+    return RegExp(r'"candidates"\s*:\s*\[\s*\{').hasMatch(object);
   }
 
   static String? _jsonObjectWithMedia(String html, int idx) {
@@ -883,11 +906,13 @@ class ThreadsResolver {
       if (start < 0) return null;
       final object = _balancedJsonObject(html, start);
       if (object == null) return null;
-      if (object.contains('image_versions2') ||
+      if (_objectHasDownloadableMedia(object)) return object;
+      final mentionsMedia = object.contains('image_versions2') ||
           object.contains('"video_versions"') ||
-          object.contains('carousel_media')) {
-        return object;
-      }
+          object.contains('carousel_media');
+      // Empty candidates belong to this post. Do not climb into a parent
+      // that also contains other posts' media.
+      if (mentionsMedia) return object;
       searchFrom = start - 1;
     }
     return null;
@@ -928,11 +953,7 @@ class ThreadsResolver {
       final start = idx - 4000 < 0 ? 0 : idx - 4000;
       final end = idx + 8000 > html.length ? html.length : idx + 8000;
       final nearby = html.substring(start, end);
-      if (nearby.contains('image_versions2') ||
-          nearby.contains('"video_versions"') ||
-          nearby.contains('carousel_media')) {
-        return idx;
-      }
+      if (_objectHasDownloadableMedia(nearby)) return idx;
       searchFrom = idx + postId.length;
     }
   }

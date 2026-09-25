@@ -10,6 +10,29 @@ import 'library_actions_stub.dart'
 Future<LibraryOpenResult> openLibraryFile(LibraryFile file, FileStore store) =>
     openLibraryFileOnPlatform(file, store);
 
+Future<LibraryOpenResult> openLibraryFileWithChooser(
+  LibraryFile file,
+  FileStore store,
+) => openLibraryFileWithChooserOnPlatform(file, store);
+
+/// Rejects empty names and path separators. Shared by folder creation.
+String validatedFolderName(String name) {
+  final trimmed = name.trim();
+  if (trimmed.isEmpty) {
+    throw ArgumentError('Folder name cannot be empty.');
+  }
+  if (trimmed == '.' ||
+      trimmed == '..' ||
+      trimmed.contains('/') ||
+      trimmed.contains('\\')) {
+    throw ArgumentError('Folder name cannot include / or \\.');
+  }
+  if (trimmed.length > 120) {
+    throw ArgumentError('Folder name is too long.');
+  }
+  return trimmed;
+}
+
 Future<void> shareLibraryFile(LibraryFile file, FileStore store) =>
     shareLibraryFileOnPlatform(file, store);
 

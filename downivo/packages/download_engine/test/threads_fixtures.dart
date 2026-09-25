@@ -405,14 +405,51 @@ String threadsLargeCarouselHtml(int count) {
 </html>''';
 }
 
+/// Empty `candidates` stub for the post, then a later object with the file.
+/// Live Threads pages do this: the first record is `media_type` 19 with
+/// `"candidates":[]`, and the JPEG or MP4 is on a later copy of the same code.
+String threadsStubThenImageHtml({
+  String imageUrl = threadsImageUrl,
+  String postId = threadsPostId,
+}) {
+  return '''
+<!DOCTYPE html>
+<html>
+<head>
+<meta property="og:description" content="A public Threads image" />
+</head>
+<body>
+<script>
+{"code":"$postId","media_type":19,"image_versions2":{"candidates":[]},"video_versions":null,"carousel_media":null,"text":"caption"}
+{"code":"OTHERPOST1","image_versions2":{"candidates":[{"url":"$threadsImageUrlTwo","width":1080,"height":1080}]}}
+{"code":"$postId","media_type":1,"carousel_media":null,"video_versions":null,"image_versions2":{"candidates":[{"url":"$imageUrl","width":1080,"height":1350}]}}
+</script>
+</body>
+</html>''';
+}
+
+String threadsMediaLessShellHtml() {
+  return '''
+<!DOCTYPE html>
+<html>
+<head>
+<meta property="og:description" content="A public Threads image" />
+<title>Threads</title>
+</head>
+<body></body>
+</html>''';
+}
+
 class ThreadsMockAdapter implements HttpClientAdapter {
   static String htmlResponse = '';
+  static Map<String, String> htmlByPathContains = {};
   static int htmlStatus = 200;
   static bool throwError = false;
   static DioExceptionType exceptionType = DioExceptionType.connectionError;
 
   static void reset() {
     htmlResponse = '';
+    htmlByPathContains = {};
     htmlStatus = 200;
     throwError = false;
     exceptionType = DioExceptionType.connectionError;
@@ -440,8 +477,17 @@ class ThreadsMockAdapter implements HttpClientAdapter {
       );
     }
 
+    var body = htmlResponse;
+    final url = options.uri.toString();
+    for (final entry in htmlByPathContains.entries) {
+      if (url.contains(entry.key)) {
+        body = entry.value;
+        break;
+      }
+    }
+
     return ResponseBody.fromString(
-      htmlResponse,
+      body,
       htmlStatus,
       headers: {
         Headers.contentTypeHeader: ['text/html; charset=utf-8'],

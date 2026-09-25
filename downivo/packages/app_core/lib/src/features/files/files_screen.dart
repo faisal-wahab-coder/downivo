@@ -13,6 +13,7 @@ import 'file_detail_screen.dart';
 import 'file_filter_sheet.dart';
 import 'file_thumbnail.dart';
 import 'image_gallery_screen.dart';
+import 'move_to_folder_sheet.dart';
 import 'open_managed_media.dart';
 
 class FilesScreen extends ConsumerStatefulWidget {
@@ -24,7 +25,10 @@ class FilesScreen extends ConsumerStatefulWidget {
 
 class _FilesScreenState extends ConsumerState<FilesScreen> {
   final _searchController = TextEditingController();
+  final _selected = <String>{};
   var _grid = false;
+
+  bool get _selecting => _selected.isNotEmpty;
 
   @override
   void dispose() {
@@ -48,43 +52,57 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
     final importsAsync = ref.watch(pendingImportsProvider);
 
     return UdmScaffold(
-      title: _titleFor(location),
-      actions: [
-        IconButton(
-          icon: Badge(
-            isLabelVisible: query.hasActiveFilters,
-            label: const Text(''),
-            child: const Icon(Icons.filter_list),
-          ),
-          tooltip: 'Filters',
-          onPressed: () => showFileFilterSheet(context, ref),
-        ),
-        PopupMenuButton<LibrarySort>(
-          icon: const Icon(Icons.sort),
-          tooltip: 'Sort',
-          initialValue: query.sort,
-          onSelected: (sort) {
-            ref.read(libraryQueryProvider.notifier).state = query.copyWith(
-              sort: sort,
-            );
-          },
-          itemBuilder: (context) => LibrarySort.values
-              .map(
-                (sort) => PopupMenuItem(value: sort, child: Text(sort.label)),
-              )
-              .toList(),
-        ),
-        IconButton(
-          icon: Icon(_grid ? Icons.view_list : Icons.grid_view),
-          tooltip: _grid ? 'List view' : 'Grid view',
-          onPressed: () => setState(() => _grid = !_grid),
-        ),
-        IconButton(
-          icon: const Icon(Icons.refresh),
-          tooltip: 'Refresh',
-          onPressed: _refresh,
-        ),
-      ],
+      title: _selecting ? '${_selected.length} selected' : _titleFor(location),
+      actions: _selecting
+          ? [
+              IconButton(
+                icon: const Icon(Icons.drive_file_move_outline),
+                tooltip: 'Move to folder',
+                onPressed: _moveSelected,
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                tooltip: 'Clear selection',
+                onPressed: _clearSelection,
+              ),
+            ]
+          : [
+              IconButton(
+                icon: Badge(
+                  isLabelVisible: query.hasActiveFilters,
+                  label: const Text(''),
+                  child: const Icon(Icons.filter_list),
+                ),
+                tooltip: 'Filters',
+                onPressed: () => showFileFilterSheet(context, ref),
+              ),
+              PopupMenuButton<LibrarySort>(
+                icon: const Icon(Icons.sort),
+                tooltip: 'Sort',
+                initialValue: query.sort,
+                onSelected: (sort) {
+                  _clearSelection();
+                  ref.read(libraryQueryProvider.notifier).state = query
+                      .copyWith(sort: sort);
+                },
+                itemBuilder: (context) => LibrarySort.values
+                    .map(
+                      (sort) =>
+                          PopupMenuItem(value: sort, child: Text(sort.label)),
+                    )
+                    .toList(),
+              ),
+              IconButton(
+                icon: Icon(_grid ? Icons.view_list : Icons.grid_view),
+                tooltip: _grid ? 'List view' : 'Grid view',
+                onPressed: () => setState(() => _grid = !_grid),
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                tooltip: 'Refresh',
+                onPressed: _refresh,
+              ),
+            ],
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: ListView(
@@ -103,6 +121,7 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
                     ? IconButton(
                         icon: const Icon(Icons.clear),
                         onPressed: () {
+                          _clearSelection();
                           _searchController.clear();
                           ref.read(libraryQueryProvider.notifier).state = query
                               .copyWith(search: '');
@@ -111,6 +130,7 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
                     : null,
               ),
               onChanged: (value) {
+                _clearSelection();
                 ref.read(libraryQueryProvider.notifier).state = query.copyWith(
                   search: value,
                 );
@@ -131,15 +151,38 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
               _BreadcrumbBar(
                 location: location,
                 onNavigate: (target) {
+                  _clearSelection();
                   ref.read(libraryLocationProvider.notifier).state = target;
                 },
               ),
+              if (location is LibraryFolderLocation && !_selecting) ...[
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () =>
+                        createFolderInCurrentLocation(context, ref),
+                    icon: const Icon(Icons.create_new_folder_outlined),
+                    label: const Text('New folder'),
+                  ),
+                ),
+                const SizedBox(height: UdmSpacing.sm),
+              ],
               const SizedBox(height: UdmSpacing.md),
             ],
             if (_isSearchMode)
-              _SearchResults(onOpenFile: _openFileDetail, grid: _grid)
+              _SearchResults(
+                onOpenFile: _openFileDetail,
+                onToggleSelect: _toggleSelect,
+                selectedPaths: _selected,
+                grid: _grid,
+              )
             else
-              _BrowseView(onOpenFile: _openFileDetail, grid: _grid),
+              _BrowseView(
+                onOpenFile: _openFileDetail,
+                onToggleSelect: _toggleSelect,
+                selectedPaths: _selected,
+                grid: _grid,
+              ),
           ],
         ),
       ),
@@ -198,6 +241,40 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
       showDragHandle: true,
       isScrollControlled: true,
       builder: (context) => _ImportSheet(imports: imports, onChanged: _refresh),
+    );
+  }
+
+  void _clearSelection() {
+    if (_selected.isEmpty) return;
+    setState(_selected.clear);
+  }
+
+  void _toggleSelect(LibraryFile file) {
+    setState(() {
+      if (!_selected.remove(file.path)) {
+        _selected.add(file.path);
+      }
+    });
+  }
+
+  Future<void> _moveSelected() async {
+    final searching = ref.read(libraryQueryProvider).search.trim().isNotEmpty;
+    final visible = searching
+        ? await ref.read(libraryFilesProvider.future)
+        : (await ref.read(libraryBrowseProvider.future)).files;
+    final files = [
+      for (final file in visible)
+        if (_selected.contains(file.path)) file,
+    ];
+    if (!mounted || files.isEmpty) return;
+    await showMoveToFolderSheet(
+      context: context,
+      ref: ref,
+      files: files,
+      onChanged: () async {
+        _clearSelection();
+        await _refresh();
+      },
     );
   }
 }
@@ -270,9 +347,16 @@ class _BreadcrumbBar extends StatelessWidget {
 }
 
 class _BrowseView extends ConsumerWidget {
-  const _BrowseView({required this.onOpenFile, required this.grid});
+  const _BrowseView({
+    required this.onOpenFile,
+    required this.onToggleSelect,
+    required this.selectedPaths,
+    required this.grid,
+  });
 
   final ValueChanged<LibraryFile> onOpenFile;
+  final ValueChanged<LibraryFile> onToggleSelect;
+  final Set<String> selectedPaths;
   final bool grid;
 
   @override
@@ -323,7 +407,12 @@ class _BrowseView extends ConsumerWidget {
               final file = page.files[index - page.folders.length];
               return _FileTile(
                 file: file,
-                onTap: () => onOpenFile(file),
+                selecting: selectedPaths.isNotEmpty,
+                selected: selectedPaths.contains(file.path),
+                onTap: () => selectedPaths.isNotEmpty
+                    ? onToggleSelect(file)
+                    : onOpenFile(file),
+                onLongPress: () => onToggleSelect(file),
                 onMore: () => _openActions(context, ref, file),
                 onDelete: () => _deleteFile(context, ref, file),
               );
@@ -362,7 +451,12 @@ class _BrowseView extends ConsumerWidget {
                   final file = page.files[index];
                   return _FileGridTile(
                     file: file,
-                    onTap: () => onOpenFile(file),
+                    selecting: selectedPaths.isNotEmpty,
+                    selected: selectedPaths.contains(file.path),
+                    onTap: () => selectedPaths.isNotEmpty
+                        ? onToggleSelect(file)
+                        : onOpenFile(file),
+                    onLongPress: () => onToggleSelect(file),
                     onMore: () => _openActions(context, ref, file),
                   );
                 },
@@ -401,9 +495,16 @@ class _BrowseView extends ConsumerWidget {
 }
 
 class _SearchResults extends ConsumerWidget {
-  const _SearchResults({required this.onOpenFile, required this.grid});
+  const _SearchResults({
+    required this.onOpenFile,
+    required this.onToggleSelect,
+    required this.selectedPaths,
+    required this.grid,
+  });
 
   final ValueChanged<LibraryFile> onOpenFile;
+  final ValueChanged<LibraryFile> onToggleSelect;
+  final Set<String> selectedPaths;
   final bool grid;
 
   @override
@@ -439,7 +540,12 @@ class _SearchResults extends ConsumerWidget {
                   final file = files[index];
                   return _FileGridTile(
                     file: file,
-                    onTap: () => onOpenFile(file),
+                    selecting: selectedPaths.isNotEmpty,
+                    selected: selectedPaths.contains(file.path),
+                    onTap: () => selectedPaths.isNotEmpty
+                        ? onToggleSelect(file)
+                        : onOpenFile(file),
+                    onLongPress: () => onToggleSelect(file),
                     onMore: () => _openActions(context, ref, file),
                   );
                 },
@@ -454,7 +560,12 @@ class _SearchResults extends ConsumerWidget {
                   final file = files[index];
                   return _FileTile(
                     file: file,
-                    onTap: () => onOpenFile(file),
+                    selecting: selectedPaths.isNotEmpty,
+                    selected: selectedPaths.contains(file.path),
+                    onTap: () => selectedPaths.isNotEmpty
+                        ? onToggleSelect(file)
+                        : onOpenFile(file),
+                    onLongPress: () => onToggleSelect(file),
                     onMore: () => _openActions(context, ref, file),
                     onDelete: () => _deleteFile(context, ref, file),
                   );
@@ -491,25 +602,27 @@ class _SearchResults extends ConsumerWidget {
   }
 }
 
-String _folderCategoryKey(LibraryFolder folder) => switch (folder.location.category) {
-  StorageCategory.videos => 'videos',
-  StorageCategory.images => 'images',
-  StorageCategory.audio => 'audio',
-  StorageCategory.documents => 'documents',
-  StorageCategory.apk => 'apps',
-  _ => 'other',
-};
+String _folderCategoryKey(LibraryFolder folder) =>
+    switch (folder.location.category) {
+      StorageCategory.videos => 'videos',
+      StorageCategory.images => 'images',
+      StorageCategory.audio => 'audio',
+      StorageCategory.documents => 'documents',
+      StorageCategory.apk => 'apps',
+      _ => 'other',
+    };
 
-IconData _folderIcon(LibraryFolder folder) => switch (folder.location.category) {
-  StorageCategory.videos => Icons.movie_outlined,
-  StorageCategory.images => Icons.image_outlined,
-  StorageCategory.audio => Icons.audiotrack_outlined,
-  StorageCategory.documents => Icons.description_outlined,
-  StorageCategory.apk => Icons.android_outlined,
-  StorageCategory.archives => Icons.folder_zip_outlined,
-  StorageCategory.qrDownloads => Icons.qr_code_2_outlined,
-  _ => Icons.folder_outlined,
-};
+IconData _folderIcon(LibraryFolder folder) =>
+    switch (folder.location.category) {
+      StorageCategory.videos => Icons.movie_outlined,
+      StorageCategory.images => Icons.image_outlined,
+      StorageCategory.audio => Icons.audiotrack_outlined,
+      StorageCategory.documents => Icons.description_outlined,
+      StorageCategory.apk => Icons.android_outlined,
+      StorageCategory.archives => Icons.folder_zip_outlined,
+      StorageCategory.qrDownloads => Icons.qr_code_2_outlined,
+      _ => Icons.folder_outlined,
+    };
 
 String _folderCountLabel(LibraryFolder folder) =>
     '${folder.itemCount} item${folder.itemCount == 1 ? '' : 's'}';
@@ -602,7 +715,9 @@ class _FolderGridTile extends StatelessWidget {
               ),
               Text(
                 _folderCountLabel(folder),
-                style: theme.textTheme.labelSmall?.copyWith(color: tokens.muted),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: tokens.muted,
+                ),
               ),
             ],
           ),
@@ -647,12 +762,18 @@ class _FileGridTile extends StatelessWidget {
   const _FileGridTile({
     required this.file,
     required this.onTap,
+    required this.onLongPress,
     required this.onMore,
+    required this.selecting,
+    required this.selected,
   });
 
   final LibraryFile file;
   final VoidCallback onTap;
+  final VoidCallback onLongPress;
   final VoidCallback onMore;
+  final bool selecting;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
@@ -667,7 +788,7 @@ class _FileGridTile extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        onLongPress: onMore,
+        onLongPress: onLongPress,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -706,18 +827,24 @@ class _FileGridTile extends StatelessWidget {
                       ],
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.more_vert, size: 20),
-                    tooltip: 'More actions',
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 36,
-                      minHeight: 36,
+                  if (selecting)
+                    Icon(
+                      selected ? Icons.check_circle : Icons.circle_outlined,
+                      color: selected ? tokens.primary : tokens.body,
+                    )
+                  else
+                    IconButton(
+                      icon: const Icon(Icons.more_vert, size: 20),
+                      tooltip: 'More actions',
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 36,
+                        minHeight: 36,
+                      ),
+                      color: tokens.body,
+                      onPressed: onMore,
                     ),
-                    color: tokens.body,
-                    onPressed: onMore,
-                  ),
                 ],
               ),
             ),
@@ -811,14 +938,20 @@ class _FileTile extends StatelessWidget {
   const _FileTile({
     required this.file,
     required this.onTap,
+    required this.onLongPress,
     required this.onMore,
     required this.onDelete,
+    required this.selecting,
+    required this.selected,
   });
 
   final LibraryFile file;
   final VoidCallback onTap;
+  final VoidCallback onLongPress;
   final VoidCallback onMore;
   final VoidCallback onDelete;
+  final bool selecting;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
@@ -829,33 +962,41 @@ class _FileTile extends StatelessWidget {
         subtitle: Text(
           '${file.source.label} · ${file.category.folderName} · ${TransferFormat.bytes(file.sizeBytes)} · ${_formatDate(file.modifiedAt)}',
         ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (file.isFavorite)
-              Padding(
-                padding: const EdgeInsets.only(right: UdmSpacing.xs),
-                child: Icon(
-                  Icons.star,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+        trailing: selecting
+            ? Icon(
+                selected ? Icons.check_circle : Icons.circle_outlined,
+                color: selected
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (file.isFavorite)
+                    Padding(
+                      padding: const EdgeInsets.only(right: UdmSpacing.xs),
+                      child: Icon(
+                        Icons.star,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    tooltip: 'Delete',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: onDelete,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.more_vert),
+                    tooltip: 'More actions',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: onMore,
+                  ),
+                ],
               ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
-              tooltip: 'Delete',
-              visualDensity: VisualDensity.compact,
-              onPressed: onDelete,
-            ),
-            IconButton(
-              icon: const Icon(Icons.more_vert),
-              tooltip: 'More actions',
-              visualDensity: VisualDensity.compact,
-              onPressed: onMore,
-            ),
-          ],
-        ),
+        selected: selected,
         onTap: onTap,
-        onLongPress: onMore,
+        onLongPress: onLongPress,
       ),
     );
   }

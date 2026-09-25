@@ -5,6 +5,16 @@ import 'library_gallery_save_result.dart';
 import 'library_open_result.dart';
 import 'models/library_file.dart';
 
+Future<LibraryOpenResult> openLibraryFileWithChooserOnPlatform(
+  LibraryFile file,
+  FileStore store,
+) async {
+  return const LibraryOpenResult(
+    success: false,
+    message: 'Open with is available on Android.',
+  );
+}
+
 Future<LibraryOpenResult> openLibraryFileOnPlatform(
   LibraryFile file,
   FileStore store,

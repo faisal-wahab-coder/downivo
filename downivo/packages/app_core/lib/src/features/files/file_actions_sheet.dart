@@ -10,6 +10,7 @@ import 'package:storage/storage.dart';
 import '../../providers/analytics_providers.dart';
 import '../../providers/library_providers.dart';
 import 'image_gallery_screen.dart';
+import 'move_to_folder_sheet.dart';
 import 'open_managed_media.dart';
 import 'save_video_audio.dart';
 
@@ -93,112 +94,155 @@ class FileActionsSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final service = hostRef.read(mediaLibraryServiceProvider);
 
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.85;
     return SafeArea(
-      child: ListView(
-        shrinkWrap: true,
-        padding: const EdgeInsets.all(UdmSpacing.lg),
-        children: [
-          Text(file.name, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: UdmSpacing.sm),
-          Text(
-            '${file.category.folderName} · ${TransferFormat.bytes(file.sizeBytes)}',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: UdmSpacing.lg),
-          _ActionTile(
-            icon: Icons.open_in_new,
-            label: kIsWeb ? 'Save to disk' : 'Open',
-            onTap: () async {
-              Navigator.pop(context);
-              if (hostContext.mounted) {
-                if (file.isGalleryImage) {
-                  await openImageGallery(
-                    hostContext,
-                    images: [file],
-                    initial: file,
-                  );
-                } else {
-                  await openLibraryFile(hostContext, hostRef, file);
-                }
-              }
-            },
-          ),
-          if (file.category == StorageCategory.videos)
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        child: ListView(
+          padding: const EdgeInsets.all(UdmSpacing.lg),
+          children: [
+            Text(file.name, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: UdmSpacing.sm),
+            Text(
+              '${file.category.folderName} · ${TransferFormat.bytes(file.sizeBytes)}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: UdmSpacing.lg),
             _ActionTile(
-              icon: Icons.audiotrack_outlined,
-              label: 'Save audio',
+              icon: Icons.open_in_new,
+              label: kIsWeb ? 'Save to disk' : 'Open',
+              onTap: () async {
+                Navigator.pop(context);
+                if (hostContext.mounted) {
+                  if (file.isGalleryImage) {
+                    await openImageGallery(
+                      hostContext,
+                      images: [file],
+                      initial: file,
+                    );
+                  } else {
+                    await openLibraryFile(hostContext, hostRef, file);
+                  }
+                }
+              },
+            ),
+            if (!kIsWeb)
+              _ActionTile(
+                icon: Icons.apps_outlined,
+                label: 'Open with',
+                onTap: () async {
+                  Navigator.pop(context);
+                  if (hostContext.mounted) {
+                    await openLibraryFileWithChooserUi(
+                      hostContext,
+                      hostRef,
+                      file,
+                    );
+                  }
+                },
+              ),
+            _ActionTile(
+              icon: Icons.folder_open_outlined,
+              label: 'Show in Files',
+              onTap: () {
+                Navigator.pop(context);
+                if (hostContext.mounted) {
+                  revealLibraryFile(hostContext, hostRef, file);
+                }
+              },
+            ),
+            if (file.category == StorageCategory.videos)
+              _ActionTile(
+                icon: Icons.audiotrack_outlined,
+                label: 'Save audio',
+                onTap: () async {
+                  Navigator.pop(context);
+                  if (!hostContext.mounted) return;
+                  await saveVideoAsAudio(
+                    context: hostContext,
+                    ref: hostRef,
+                    file: file,
+                    onChanged: onChanged,
+                  );
+                },
+              ),
+            _ActionTile(
+              icon: Icons.share_outlined,
+              label: 'Share',
+              onTap: () async {
+                Navigator.pop(context);
+                hostRef
+                    .read(analyticsServiceProvider)
+                    .track(AnalyticsEvent.shareClicked);
+                await service.share(file);
+              },
+            ),
+            if (!kIsWeb && file.canSaveToGallery)
+              _ActionTile(
+                icon: Icons.photo_library_outlined,
+                label: 'Save to Gallery',
+                onTap: () async {
+                  Navigator.pop(context);
+                  if (hostContext.mounted) {
+                    await saveLibraryFileToGalleryUi(
+                      hostContext,
+                      hostRef,
+                      file,
+                    );
+                  }
+                },
+              ),
+            _ActionTile(
+              icon: file.isFavorite ? Icons.star : Icons.star_border,
+              label: file.isFavorite ? 'Remove favorite' : 'Add to favorites',
+              onTap: () async {
+                await service.toggleFavorite(file);
+                await onChanged();
+                if (context.mounted) Navigator.pop(context);
+              },
+            ),
+            _ActionTile(
+              icon: Icons.drive_file_rename_outline,
+              label: 'Rename',
+              onTap: () async {
+                await _rename(context, service);
+              },
+            ),
+            _ActionTile(
+              icon: Icons.drive_file_move_outline,
+              label: 'Move to folder',
               onTap: () async {
                 Navigator.pop(context);
                 if (!hostContext.mounted) return;
-                await saveVideoAsAudio(
+                await showMoveToFolderSheet(
                   context: hostContext,
                   ref: hostRef,
-                  file: file,
+                  files: [file],
                   onChanged: onChanged,
                 );
               },
             ),
-          _ActionTile(
-            icon: Icons.share_outlined,
-            label: 'Share',
-            onTap: () async {
-              Navigator.pop(context);
-              hostRef.read(analyticsServiceProvider).track(AnalyticsEvent.shareClicked);
-              await service.share(file);
-            },
-          ),
-          if (!kIsWeb && file.canSaveToGallery)
             _ActionTile(
-              icon: Icons.photo_library_outlined,
-              label: 'Save to Gallery',
+              icon: Icons.delete_outline,
+              label: 'Delete',
+              destructive: true,
               onTap: () async {
-                Navigator.pop(context);
-                if (hostContext.mounted) {
-                  await saveLibraryFileToGalleryUi(hostContext, hostRef, file);
-                }
+                hostRef
+                    .read(analyticsServiceProvider)
+                    .track(AnalyticsEvent.deleteClicked);
+                final deleted = await confirmAndDeleteLibraryFile(
+                  context: context,
+                  ref: hostRef,
+                  file: file,
+                  onChanged: onChanged,
+                  messengerContext: hostContext,
+                );
+                if (deleted && context.mounted) Navigator.pop(context);
+                if (deleted) onDeleted?.call();
               },
             ),
-          _ActionTile(
-            icon: file.isFavorite ? Icons.star : Icons.star_border,
-            label: file.isFavorite ? 'Remove favorite' : 'Add to favorites',
-            onTap: () async {
-              await service.toggleFavorite(file);
-              await onChanged();
-              if (context.mounted) Navigator.pop(context);
-            },
-          ),
-          _ActionTile(
-            icon: Icons.drive_file_rename_outline,
-            label: 'Rename',
-            onTap: () async {
-              await _rename(context, service);
-            },
-          ),
-          _ActionTile(
-            icon: Icons.drive_file_move_outline,
-            label: 'Move to category',
-            onTap: () async {
-              await _move(context, service);
-            },
-          ),
-          _ActionTile(
-            icon: Icons.delete_outline,
-            label: 'Delete',
-            destructive: true,
-            onTap: () async {
-              hostRef.read(analyticsServiceProvider).track(AnalyticsEvent.deleteClicked);
-              final deleted = await confirmAndDeleteLibraryFile(
-                context: context,
-                ref: hostRef,
-                file: file,
-                onChanged: onChanged,
-                messengerContext: hostContext,
-              );
-              if (deleted && context.mounted) Navigator.pop(context);
-              if (deleted) onDeleted?.call();
-            },
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -251,38 +295,6 @@ class FileActionsSheet extends StatelessWidget {
       }
     } finally {
       controller.dispose();
-    }
-  }
-
-  Future<void> _move(
-    BuildContext sheetContext,
-    MediaLibraryService service,
-  ) async {
-    final target = await showDialog<StorageCategory>(
-      context: sheetContext,
-      builder: (context) => SimpleDialog(
-        title: const Text('Move to category'),
-        children: MediaLibraryService.browsableCategories
-            .where((c) => c != file.category)
-            .map(
-              (category) => SimpleDialogOption(
-                onPressed: () => Navigator.pop(context, category),
-                child: Text(category.folderName),
-              ),
-            )
-            .toList(),
-      ),
-    );
-
-    if (target == null || !sheetContext.mounted) return;
-
-    await service.move(file, target);
-    await onChanged();
-    if (sheetContext.mounted) Navigator.pop(sheetContext);
-    if (hostContext.mounted) {
-      ScaffoldMessenger.of(
-        hostContext,
-      ).showSnackBar(SnackBar(content: Text('Moved to ${target.folderName}')));
     }
   }
 }
