@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../spacing.dart';
 import '../theme/udm_colors.dart';
+import '../theme/zfile_tokens.dart';
 
 abstract final class UdmMotion {
   static Duration of(BuildContext context, Duration duration) {
@@ -24,7 +25,7 @@ class UdmSkeleton extends StatelessWidget {
         height: height,
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(UdmRadius.sm),
         ),
       ),
     );
@@ -44,13 +45,13 @@ class UdmSectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: UdmSpacing.sm),
+      padding: const EdgeInsets.only(bottom: UdmSpacing.md),
       child: Row(
         children: [
           Expanded(
             child: Text(
-              label.toUpperCase(),
-              style: Theme.of(context).textTheme.titleSmall,
+              label,
+              style: Theme.of(context).textTheme.titleMedium,
             ),
           ),
           ?trailing,
@@ -67,18 +68,18 @@ class PlatformBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final tokens = ZfileTokens.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: scheme.outline),
+        color: tokens.surface,
+        borderRadius: BorderRadius.circular(UdmRadius.button),
+        border: Border.all(color: tokens.border),
       ),
       child: Text(
         label,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: scheme.onSurfaceVariant,
+              color: tokens.body,
             ),
       ),
     );
@@ -99,10 +100,11 @@ class UdmStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = ZfileTokens.of(context);
     final color = switch (tone) {
-      UdmStatusTone.progress => UdmColors.signalCyan,
+      UdmStatusTone.progress => tokens.secondary,
       UdmStatusTone.caution => UdmColors.cautionAmber,
-      UdmStatusTone.success => UdmColors.successMoss,
+      UdmStatusTone.success => tokens.secondaryDark,
       UdmStatusTone.fault => UdmColors.faultCoral,
       UdmStatusTone.info => Theme.of(context).colorScheme.primary,
       UdmStatusTone.muted => Theme.of(context).colorScheme.onSurfaceVariant,
@@ -114,7 +116,7 @@ class UdmStatusChip extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.55)),
       ),
       child: Text(
-        label.toUpperCase(),
+        label,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: color,
               letterSpacing: 0.5,

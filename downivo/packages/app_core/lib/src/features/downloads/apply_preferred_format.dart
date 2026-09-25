@@ -11,16 +11,10 @@ DiscoveredResource applyPreferredFormat(
       override ??
       resource.formatMatching(
         quality: settings.preferredQuality,
-        mime: settings.preferredFormat,
+        mime: _audioFormatNeedle(settings.preferredFormat),
       );
   if (format == null) return resource;
-  return resource.copyWith(
-    directUrl: format.url,
-    mimeType: format.mimeType ?? resource.mimeType,
-    width: format.width ?? resource.width,
-    height: format.height ?? resource.height,
-    contentLengthBytes: format.sizeBytes ?? resource.contentLengthBytes,
-  );
+  return resource.withFormat(format);
 }
 
 List<DiscoveredResource> applyPreferredFormats(
@@ -41,7 +35,7 @@ MediaFormat? explicitPreferredFormat(
   AppSettings settings,
 ) {
   final quality = settings.preferredQuality?.trim().toLowerCase();
-  final mime = settings.preferredFormat?.trim().toLowerCase();
+  final mime = _audioFormatNeedle(settings.preferredFormat);
   if ((quality == null || quality.isEmpty) &&
       (mime == null || mime.isEmpty)) {
     return null;
@@ -64,4 +58,13 @@ MediaFormat? explicitPreferredFormat(
     }
   }
   return null;
+}
+
+/// Settings format is Video or Audio. Only Audio selects an audio row.
+/// Video, and older saved values (Any, MP4, WebM), keep the video choice
+/// so a label of "video" does not match the first `video/mp4` and skip
+/// the quality sheet.
+String? _audioFormatNeedle(String? format) {
+  final value = format?.trim().toLowerCase();
+  return value == 'audio' ? 'audio' : null;
 }

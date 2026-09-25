@@ -132,8 +132,12 @@ class TikTokResolver {
 
   /// True when [formats] is the TikTok with/without watermark pair.
   static bool isWatermarkChoice(List<MediaFormat> formats) {
-    if (formats.length != 2) return false;
-    final labels = formats.map((format) => format.label).toSet();
+    final videos = [
+      for (final format in formats)
+        if (format.track != MediaFormatTrack.audio) format,
+    ];
+    if (videos.length != 2) return false;
+    final labels = videos.map((format) => format.label).toSet();
     return labels.contains(withWatermarkLabel) &&
         labels.contains(withoutWatermarkLabel);
   }

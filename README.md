@@ -14,7 +14,7 @@ There is no account system and no backend. Everything runs on the device.
 
 ## Features
 
-Only features that exist in the current codebase (`1.3.0+5`) are listed.
+Only features that exist in the current codebase (`1.5.0+7`) are listed.
 
 ### Download Management
 
@@ -29,6 +29,7 @@ Only features that exist in the current codebase (`1.3.0+5`) are listed.
 ### Media Downloads
 
 - Sixteen social/media URL resolvers: YouTube, TikTok, Instagram, Facebook, X, Reddit, Pinterest, LinkedIn, Threads, SoundCloud, Vimeo, Twitch, Telegram, Snapchat, WhatsApp, and Dailymotion
+- Save as Video or Audio after a video link is resolved
 - Format / quality picker when a resolver returns multiple streams
 - Resolvers fail clearly on auth walls, DRM, and private CDNs (they do not scrape private content)
 
@@ -41,10 +42,11 @@ Only features that exist in the current codebase (`1.3.0+5`) are listed.
 ### File Management
 
 - Category folders (Videos, Images, Audio, Documents, Archives, APK, and others)
-- Files tab: search, category filters, favorites, sort
-- Open, share, rename, move, delete
+- Files tab: search, category filters, favorites, sort, user folders, and move-to-folder
+- Open, share, rename, move, delete, and Open with another app
 - Import detection for files added into managed folders
 - Save to Gallery (photos and videos)
+- Save audio from a video already in Files
 - In-app image gallery and local audio/video viewer
 
 ### UI/UX

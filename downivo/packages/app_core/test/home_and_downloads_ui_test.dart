@@ -52,11 +52,11 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('PASTE URL'), findsOneWidget);
+    expect(find.text('Paste URL'), findsOneWidget);
     expect(find.text('Paste a link to download'), findsOneWidget);
     expect(find.text('Scan QR'), findsOneWidget);
     expect(find.text('Clipboard'), findsOneWidget);
-    expect(find.text('SUPPORTED SOURCES'), findsOneWidget);
+    expect(find.text('Supported sources'), findsOneWidget);
   });
 
   testWidgets('Downloads lists preparing and verifying tasks', (tester) async {
@@ -85,8 +85,8 @@ void main() {
 
     expect(find.text('prep.bin'), findsOneWidget);
     expect(find.text('check.bin'), findsOneWidget);
-    expect(find.textContaining('PREPARING'), findsWidgets);
-    expect(find.textContaining('VERIFYING'), findsWidgets);
+    expect(find.textContaining('Finding video'), findsWidgets);
+    expect(find.textContaining('Verifying'), findsWidgets);
     expect(find.text('Add URL'), findsOneWidget);
   });
 
@@ -162,7 +162,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('gone.mp4'), findsOneWidget);
-    expect(find.textContaining('REMOVED FROM FILES'), findsOneWidget);
+    expect(find.textContaining('Removed from Files'), findsOneWidget);
     expect(find.byTooltip('Share'), findsNothing);
     expect(find.byTooltip('Open'), findsNothing);
   });

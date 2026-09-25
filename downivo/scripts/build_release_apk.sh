@@ -25,7 +25,7 @@ Build a Downivo Android release APK for device testing.
   --open  Reveal the APK in Finder (macOS)
 
 Output:
-  apps/mobile/build/app/outputs/flutter-apk/app-release.apk
+  apps/mobile/build/app/outputs/flutter-apk/downivo-<version>-<build>.apk
 EOF
 }
 
@@ -72,10 +72,27 @@ if [[ "$BUILD_AAB" -eq 1 ]]; then
   flutter build appbundle --release
 fi
 
-APK="$MOBILE/build/app/outputs/flutter-apk/app-release.apk"
-if [[ ! -f "$APK" ]]; then
-  echo "APK was not produced at $APK" >&2
+OUT_DIR="$MOBILE/build/app/outputs/flutter-apk"
+SOURCE_APK="$OUT_DIR/app-release.apk"
+if [[ ! -f "$SOURCE_APK" ]]; then
+  echo "APK was not produced at $SOURCE_APK" >&2
   exit 1
+fi
+
+# pubspec version is name+code (e.g. 1.3.0+5) → downivo-1.3.0-5.apk
+FILE_VERSION="${VERSION//+/-}"
+APK="$OUT_DIR/downivo-${FILE_VERSION}.apk"
+rm -f "$APK"
+mv "$SOURCE_APK" "$APK"
+
+if [[ "$BUILD_AAB" -eq 1 ]]; then
+  SOURCE_AAB="$MOBILE/build/app/outputs/bundle/release/app-release.aab"
+  if [[ -f "$SOURCE_AAB" ]]; then
+    AAB="$MOBILE/build/app/outputs/bundle/release/downivo-${FILE_VERSION}.aab"
+    rm -f "$AAB"
+    mv "$SOURCE_AAB" "$AAB"
+    echo "Release AAB: $AAB"
+  fi
 fi
 
 echo ""

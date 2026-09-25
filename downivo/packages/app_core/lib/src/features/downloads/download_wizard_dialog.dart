@@ -3,8 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:shared_types/shared_types.dart';
 
 /// Pre-download confirmation — URL, filename, and priority.
+///
+/// Video or Audio is asked later, only after the link is a video.
 class DownloadWizardDialog extends StatefulWidget {
-  const DownloadWizardDialog({super.key, this.initialUrl});
+  const DownloadWizardDialog({
+    super.key,
+    this.initialUrl,
+  });
 
   final String? initialUrl;
 
@@ -14,7 +19,9 @@ class DownloadWizardDialog extends StatefulWidget {
   }) {
     return showDialog<DownloadWizardResult>(
       context: context,
-      builder: (context) => DownloadWizardDialog(initialUrl: initialUrl),
+      builder: (context) => DownloadWizardDialog(
+        initialUrl: initialUrl,
+      ),
     );
   }
 

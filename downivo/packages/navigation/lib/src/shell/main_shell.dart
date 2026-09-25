@@ -140,8 +140,9 @@ class _DesktopRail extends StatelessWidget {
     final primary = destinations.take(destinations.length - 1);
     final settings = destinations.last;
 
+    final tokens = ZfileTokens.of(context);
     return ColoredBox(
-      color: scheme.surface,
+      color: tokens.surface,
       child: SizedBox(
         width: 80,
         child: SafeArea(
@@ -153,13 +154,15 @@ class _DesktopRail extends StatelessWidget {
                 height: 40,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: UdmColors.signalCyan,
-                  borderRadius: BorderRadius.circular(10),
+                  color: tokens.iconActiveBg,
+                  borderRadius: BorderRadius.circular(UdmRadius.icon),
                 ),
-                child: const Text(
+                child: Text(
                   AppIdentity.railMark,
                   style: TextStyle(
-                    color: UdmColors.onAccent,
+                    color: tokens.iconActiveFg,
+                    fontFamily: 'Poppins',
+                    package: 'design_system',
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
                     letterSpacing: -0.4,
@@ -209,9 +212,8 @@ class _RailItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected
-        ? UdmColors.signalCyan
-        : Theme.of(context).colorScheme.onSurfaceVariant;
+    final tokens = ZfileTokens.of(context);
+    final labelColor = selected ? tokens.heading : tokens.iconInactive;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
@@ -220,43 +222,38 @@ class _RailItem extends StatelessWidget {
         child: SizedBox(
           width: 80,
           height: 64,
-          child: Stack(
-            children: [
-              if (selected)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Container(
-                    width: 3,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: UdmColors.signalCyan,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 40,
+                  height: 32,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: selected ? tokens.iconActiveBg : Colors.transparent,
+                    borderRadius: BorderRadius.circular(UdmRadius.navActive),
+                  ),
+                  child: Icon(
+                    selected ? destination.selectedIcon : destination.icon,
+                    color: selected ? tokens.iconActiveFg : tokens.iconInactive,
+                    size: 22,
                   ),
                 ),
-              Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      selected ? destination.selectedIcon : destination.icon,
-                      color: color,
-                      size: 22,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      destination.label.toUpperCase(),
-                      style: TextStyle(
-                        color: color,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.4,
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 4),
+                Text(
+                  destination.label,
+                  style: TextStyle(
+                    color: labelColor,
+                    fontFamily: 'Inter',
+                    package: 'design_system',
+                    fontSize: 10,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                    height: 1.2,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

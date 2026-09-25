@@ -1,0 +1,317 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Downivo runtime",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "output": "downivo-runtime.architecture.html",
+    "repository": {
+      "url": "https://github.com/faisal-wahab-coder/downivo.git",
+      "provider": "github",
+      "revision": "0311ae94d638c0ad37b40735601836805bc8369c"
+    },
+    "views": [
+      {
+        "id": "download-path",
+        "label": "Primary download path",
+        "focus": ["user", "appUi", "manager", "resolvers", "dio", "hosts"],
+        "note": "Follow one URL from the Flutter UI through resolve and HTTPS to the remote host."
+      },
+      {
+        "id": "local-state",
+        "label": "Metadata and bytes",
+        "focus": ["manager", "database", "files"],
+        "note": "Queue metadata stays in sqflite. File bytes stay in FileStore."
+      },
+      {
+        "id": "process-boundary",
+        "label": "UI and service",
+        "focus": ["appUi", "manager", "service"],
+        "note": "The UI isolate starts a separate Android dataSync foreground service."
+      }
+    ]
+  },
+  "layout": {
+    "mode": "grid",
+    "cols": 6,
+    "gapX": 56,
+    "gapY": 72,
+    "cellW": 168,
+    "cellH": 76
+  },
+  "components": [
+    {
+      "id": "user",
+      "type": "external",
+      "label": "User",
+      "sublabel": "share or URL",
+      "row": 1,
+      "col": 0,
+      "sources": [
+        {
+          "path": "documentation/11_Technical_Architecture/11.1_System_Architecture.md",
+          "line": 4,
+          "end_line": 8,
+          "label": "User to Flutter UI"
+        }
+      ]
+    },
+    {
+      "id": "appUi",
+      "type": "frontend",
+      "label": "Flutter UI",
+      "sublabel": "app_core",
+      "row": 1,
+      "col": 1,
+      "sources": [
+        {
+          "path": "downivo/apps/mobile/lib/main.dart",
+          "line": 6,
+          "end_line": 16,
+          "label": "mobile main"
+        },
+        {
+          "path": "downivo/packages/app_core/lib/src/bootstrap/bootstrap.dart",
+          "line": 18,
+          "label": "bootstrap"
+        }
+      ]
+    },
+    {
+      "id": "manager",
+      "type": "backend",
+      "label": "DownloadManager",
+      "sublabel": "queue",
+      "row": 1,
+      "col": 2,
+      "sources": [
+        {
+          "path": "downivo/packages/download_engine/lib/src/download_manager.dart",
+          "line": 53,
+          "label": "DownloadManager"
+        },
+        {
+          "path": "documentation/11_Technical_Architecture/11.4_Download_Engine.md",
+          "line": 11,
+          "end_line": 12,
+          "label": "concurrency"
+        }
+      ]
+    },
+    {
+      "id": "resolvers",
+      "type": "backend",
+      "label": "Resolvers",
+      "sublabel": "social or direct",
+      "row": 1,
+      "col": 3,
+      "sources": [
+        {
+          "path": "downivo/packages/download_engine/lib/src/content_providers/content_provider_registry.dart",
+          "line": 14,
+          "end_line": 17,
+          "label": "registry"
+        }
+      ]
+    },
+    {
+      "id": "dio",
+      "type": "backend",
+      "label": "Dio",
+      "sublabel": "HTTP client",
+      "row": 1,
+      "col": 4,
+      "sources": [
+        {
+          "path": "downivo/packages/download_engine/lib/src/web_request_proxy.dart",
+          "line": 33,
+          "end_line": 39,
+          "label": "createEngineDio"
+        }
+      ]
+    },
+    {
+      "id": "hosts",
+      "type": "external",
+      "label": "Remote hosts",
+      "sublabel": "untrusted origin",
+      "row": 1,
+      "col": 5,
+      "sources": [
+        {
+          "path": "documentation/11_Technical_Architecture/11.4_Download_Engine.md",
+          "line": 20,
+          "end_line": 24,
+          "label": "resolve then fetch"
+        }
+      ]
+    },
+    {
+      "id": "database",
+      "type": "database",
+      "label": "sqflite",
+      "sublabel": "task metadata",
+      "row": 0,
+      "col": 2,
+      "sources": [
+        {
+          "path": "downivo/packages/database/lib/src/app_database.dart",
+          "line": 9,
+          "label": "AppDatabase"
+        }
+      ]
+    },
+    {
+      "id": "files",
+      "type": "backend",
+      "label": "FileStore",
+      "sublabel": "local bytes",
+      "row": 2,
+      "col": 2,
+      "sources": [
+        {
+          "path": "downivo/packages/storage/lib/src/file_store/file_store.dart",
+          "line": 4,
+          "label": "FileStore"
+        },
+        {
+          "path": "downivo/packages/storage/lib/src/file_store/io_file_store.dart",
+          "line": 8,
+          "label": "Android files"
+        }
+      ]
+    },
+    {
+      "id": "service",
+      "type": "security",
+      "label": "Foreground service",
+      "sublabel": "dataSync isolate",
+      "row": 0,
+      "col": 3,
+      "sources": [
+        {
+          "path": "downivo/apps/mobile/android/app/src/main/AndroidManifest.xml",
+          "line": 62,
+          "end_line": 64,
+          "label": "dataSync service"
+        },
+        {
+          "path": "downivo/packages/job_manager/lib/src/background_download_coordinator.dart",
+          "line": 44,
+          "label": "task listener"
+        },
+        {
+          "path": "documentation/11_Technical_Architecture/11.6_Background_Workers.md",
+          "line": 9,
+          "end_line": 11,
+          "label": "service isolate"
+        }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "On-device app",
+      "wraps": ["appUi", "manager", "resolvers", "dio", "database", "files"]
+    },
+    {
+      "kind": "security-group",
+      "label": "Untrusted network",
+      "wraps": ["hosts"]
+    },
+    {
+      "kind": "security-group",
+      "label": "Android platform",
+      "wraps": ["service"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "user-to-ui",
+      "from": "user",
+      "to": "appUi",
+      "label": "share or URL",
+      "variant": "emphasis"
+    },
+    {
+      "id": "ui-to-manager",
+      "from": "appUi",
+      "to": "manager",
+      "label": "enqueue",
+      "variant": "emphasis"
+    },
+    {
+      "id": "manager-to-resolvers",
+      "from": "manager",
+      "to": "resolvers",
+      "label": "resolve",
+      "variant": "emphasis",
+      "labelDy": 22
+    },
+    {
+      "id": "resolvers-to-dio",
+      "from": "resolvers",
+      "to": "dio",
+      "label": "HTTP",
+      "variant": "emphasis"
+    },
+    {
+      "id": "dio-to-hosts",
+      "from": "dio",
+      "to": "hosts",
+      "label": "HTTPS GET",
+      "variant": "security"
+    },
+    {
+      "id": "manager-to-database",
+      "from": "manager",
+      "to": "database",
+      "label": "SQL metadata"
+    },
+    {
+      "id": "manager-to-files",
+      "from": "manager",
+      "to": "files",
+      "label": "write bytes",
+      "labelDy": 24
+    },
+    {
+      "id": "manager-to-service",
+      "from": "manager",
+      "to": "service",
+      "label": "dataSync",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Primary path",
+      "items": [
+        "A share or typed URL enters the Flutter UI",
+        "DownloadManager resolves, then Dio fetches",
+        "At most three downloads run at once"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "On device",
+      "items": [
+        "sqflite stores downloads and app_metadata",
+        "FileStore writes category folders on device",
+        "tasksStream is the live queue bus"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Trust",
+      "items": [
+        "Remote hosts stay outside the app",
+        "There is no account server and no sync",
+        "The foreground service is another isolate"
+      ]
+    }
+  ]
+}

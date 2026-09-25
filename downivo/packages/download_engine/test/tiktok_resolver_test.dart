@@ -396,11 +396,22 @@ void main() {
   // ─────────────────────────────────────────────────────────────────────────
 
   group('Phase 7 — Audio', () {
-    test('TT-CAP-002 no audio-only extraction capability', () {
-      // TikTok serves muxed MP4 with audio included
-      // There is no audio-only download option
-      // This documents the limitation
-      expect(true, isTrue);
+    test('TT-CAP-002 muxed TikTok video can be saved as M4A', () {
+      const resource = DiscoveredResource(
+        directUrl: 'https://v16.tiktokcdn.com/a/play.mp4',
+        fileName: 'clip.mp4',
+        platform: 'TikTok',
+        mimeType: 'video/mp4',
+        kind: DiscoveredResourceKind.video,
+      );
+      final decorated = AudioDownloadOption.decorate(resource);
+      expect(decorated.offersAudio, isTrue);
+      expect(decorated.formats.last.label, 'M4A');
+      expect(decorated.formats.last.extractAudio, isTrue);
+      expect(decorated.formats.last.mimeType, 'audio/mp4');
+      final saved = decorated.withFormat(decorated.formats.last);
+      expect(saved.fileName, 'clip.m4a');
+      expect(saved.kind, DiscoveredResourceKind.audio);
     });
   });
 

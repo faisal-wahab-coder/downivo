@@ -129,5 +129,17 @@ void main() {
       expect(results, hasLength(1));
       expect(results.single.directUrl, threadsImageUrl);
     });
+
+    test('TH-RES-013 media-less shell does not hide a later target', () async {
+      ThreadsMockAdapter.htmlResponse = threadsMediaLessShellHtml();
+      ThreadsMockAdapter.htmlByPathContains = {
+        '/t/$threadsPostId': threadsImageHtml(),
+      };
+      final results = await ThreadsResolver(dio: mockDio).discoverAll(
+        Uri.parse(threadsPostUrl),
+      );
+      expect(results, hasLength(1));
+      expect(results.single.directUrl, threadsImageUrl);
+    });
   });
 }

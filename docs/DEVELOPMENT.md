@@ -144,7 +144,7 @@ flutter build appbundle --release
 
 Outputs (under `apps/mobile/build/`):
 
-- APK: `app/outputs/flutter-apk/app-release.apk`
+- APK: `app/outputs/flutter-apk/downivo-<version>-<build>.apk` (via `scripts/build_release_apk.sh`)
 - AAB: `app/outputs/bundle/release/app-release.aab`
 - Mapping: `app/outputs/mapping/release/mapping.txt`
 

@@ -94,10 +94,14 @@ class MediaPreviewCard extends StatelessWidget {
               const SizedBox(height: UdmSpacing.md),
               Row(
                 children: [
-                  if (onMoreOptions != null && !watermarkChoice)
+                  if (onMoreOptions != null)
                     TextButton(
                       onPressed: onMoreOptions,
-                      child: const Text('More options'),
+                      child: Text(
+                        watermarkChoice && resource.offersAudio
+                            ? 'Audio'
+                            : 'More options',
+                      ),
                     ),
                   const Spacer(),
                   if (onDownload != null)

@@ -2,7 +2,9 @@ import 'package:analytics/analytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:media_library/media_library.dart';
+import 'package:shared_types/shared_types.dart';
 import 'package:universal_viewer/universal_viewer.dart';
 
 import '../../providers/analytics_providers.dart';
@@ -114,4 +116,39 @@ Future<void> openLibraryFile(
     title: file.name,
     mimeType: file.mimeType,
   );
+}
+
+Future<void> openLibraryFileWithChooserUi(
+  BuildContext context,
+  WidgetRef ref,
+  LibraryFile file,
+) async {
+  ref.read(analyticsServiceProvider).track(AnalyticsEvent.openFileClicked);
+  final result = await ref.read(mediaLibraryServiceProvider).openWith(file);
+  if (context.mounted && !result.success && result.message.isNotEmpty) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(result.message)));
+  }
+}
+
+/// Opens the in-app Files folder that contains [file].
+void revealLibraryFile(BuildContext context, WidgetRef ref, LibraryFile file) {
+  final location = ref
+      .read(mediaLibraryServiceProvider)
+      .locationContaining(file);
+  final query = ref.read(libraryQueryProvider);
+  if (query.search.isNotEmpty) {
+    ref.read(libraryQueryProvider.notifier).state = query.copyWith(search: '');
+  }
+  ref.read(libraryLocationProvider.notifier).state = location;
+
+  final router = GoRouter.maybeOf(context);
+  if (router == null) return;
+  final path = router.state.uri.path;
+  if (path.startsWith(AppRoutes.files)) {
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    return;
+  }
+  router.go(AppRoutes.files);
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../spacing.dart';
+import '../theme/zfile_tokens.dart';
 
 class OnboardingLayout extends StatelessWidget {
   const OnboardingLayout({
@@ -29,55 +30,96 @@ class OnboardingLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final tokens = ZfileTokens.of(context);
     return Scaffold(
+      backgroundColor: tokens.onboarding,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(UdmSpacing.xxxl),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (progress != null) ...[
-                LinearProgressIndicator(value: progress),
-                const SizedBox(height: UdmSpacing.xxl),
-              ],
-              if (icon != null) ...[
-                Icon(icon, size: 72, color: theme.colorScheme.primary),
-                const SizedBox(height: UdmSpacing.xxl),
-              ],
-              Text(title, style: theme.textTheme.headlineSmall),
-              const SizedBox(height: UdmSpacing.lg),
-              Expanded(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: theme.colorScheme.outline.withValues(alpha: 0.7),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                UdmSpacing.xl,
+                UdmSpacing.lg,
+                UdmSpacing.xl,
+                UdmSpacing.lg,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (progress != null) ...[
+                    LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 6,
+                      borderRadius: BorderRadius.circular(UdmRadius.button),
+                      backgroundColor: tokens.onGradientHeading.withValues(alpha: 0.24),
+                      color: tokens.secondary,
+                    ),
+                    const SizedBox(height: UdmSpacing.xl),
+                  ],
+                  if (icon != null) ...[
+                    Container(
+                      width: 72,
+                      height: 72,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: tokens.onGradientHeading.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(UdmRadius.hero),
+                      ),
+                      child: Icon(icon, size: 36, color: tokens.onGradientHeading),
+                    ),
+                    const SizedBox(height: UdmSpacing.lg),
+                  ],
+                  Text(
+                    title,
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      color: tokens.onGradientHeading,
                     ),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(UdmSpacing.lg),
-                    child: body,
+                ],
+              ),
+            ),
+            Expanded(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: tokens.surfaceElevated.withValues(alpha: 0.96),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(UdmRadius.hero),
+                  ),
+                  boxShadow: tokens.floatingShadow,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    UdmSpacing.cardPaddingLarge,
+                    UdmSpacing.xl,
+                    UdmSpacing.cardPaddingLarge,
+                    UdmSpacing.lg,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(child: body),
+                      if (isLoading)
+                        const Center(child: CircularProgressIndicator())
+                      else ...[
+                        FilledButton(
+                          onPressed: onPrimaryAction,
+                          child: Text(primaryActionLabel),
+                        ),
+                        if (secondaryActionLabel != null) ...[
+                          const SizedBox(height: UdmSpacing.sm),
+                          TextButton(
+                            onPressed: onSecondaryAction,
+                            child: Text(secondaryActionLabel!),
+                          ),
+                        ],
+                      ],
+                    ],
                   ),
                 ),
               ),
-              if (isLoading)
-                const Center(child: CircularProgressIndicator())
-              else ...[
-                FilledButton(
-                  onPressed: onPrimaryAction,
-                  child: Text(primaryActionLabel),
-                ),
-                if (secondaryActionLabel != null) ...[
-                  const SizedBox(height: UdmSpacing.sm),
-                  TextButton(
-                    onPressed: onSecondaryAction,
-                    child: Text(secondaryActionLabel!),
-                  ),
-                ],
-              ],
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -165,12 +207,18 @@ class FeatureHighlight extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = ZfileTokens.of(context);
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: CircleAvatar(
-        backgroundColor: theme.colorScheme.primaryContainer,
-        child: Icon(icon, color: theme.colorScheme.onPrimaryContainer),
+      leading: Container(
+        width: 40,
+        height: 40,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: tokens.primaryContainer,
+          borderRadius: BorderRadius.circular(UdmRadius.icon),
+        ),
+        child: Icon(icon, color: tokens.primary, size: 22),
       ),
       title: Text(title),
       subtitle: Text(subtitle),

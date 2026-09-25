@@ -92,16 +92,16 @@ class SettingsScreen extends ConsumerWidget {
             const Divider(height: 1),
             ListTile(
               title: const Text('Format'),
-              subtitle: Text(settings.preferredFormat ?? 'Any'),
+              subtitle: Text(
+                settings.preferredFormat == 'audio' ? 'Audio' : 'Video',
+              ),
               trailing: PopupMenuButton<String>(
                 tooltip: 'Preferred format',
                 onSelected: (value) => ref
                     .read(settingsProvider.notifier)
-                    .setPreferredFormat(value.isEmpty ? null : value),
+                    .setPreferredFormat(value),
                 itemBuilder: (context) => const [
-                  PopupMenuItem(value: '', child: Text('Any')),
-                  PopupMenuItem(value: 'mp4', child: Text('MP4')),
-                  PopupMenuItem(value: 'webm', child: Text('WebM')),
+                  PopupMenuItem(value: 'video', child: Text('Video')),
                   PopupMenuItem(value: 'audio', child: Text('Audio')),
                 ],
               ),
@@ -159,8 +159,8 @@ class SettingsScreen extends ConsumerWidget {
                 child: Slider(
                   value: settings.defaultConnectionCount.toDouble(),
                   min: 1,
-                  max: 16,
-                  divisions: 15,
+                  max: 8,
+                  divisions: 7,
                   label: '${settings.defaultConnectionCount}',
                   onChanged: (value) => ref
                       .read(settingsProvider.notifier)

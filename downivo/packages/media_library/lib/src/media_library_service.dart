@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:mime/mime.dart';
 import 'package:path/path.dart' as p;
 import 'package:performance/performance.dart';
@@ -249,14 +251,121 @@ class MediaLibraryService {
     StorageCategory targetCategory,
   ) async {
     if (file.category == targetCategory) return file;
+    return _placeFile(
+      file,
+      _paths.categoryPath(targetCategory),
+      targetCategory,
+    );
+  }
 
-    final targetDir = _paths.categoryPath(targetCategory);
+  /// Creates a user folder under a category, or under [parentRelativePath].
+  Future<LibraryFolder> createFolder({
+    required StorageCategory category,
+    required String name,
+    String parentRelativePath = '',
+  }) async {
+    _requireBrowsable(category);
+    final folderName = validatedFolderName(name);
+    final parent = _safeRelative(parentRelativePath);
+    final relative = parent.isEmpty ? folderName : '$parent/$folderName';
+    final target = p.join(
+      _paths.categoryPath(category),
+      _platformRelative(relative),
+    );
+    if (await _fileStore.directoryExists(target)) {
+      throw ArgumentError('A folder with that name already exists.');
+    }
+    await _fileStore.createDirectory(target);
+    invalidateScanCache();
+    return LibraryFolder(
+      name: folderName,
+      path: target,
+      location: LibraryFolderLocation(
+        category: category,
+        relativeSubPath: relative,
+      ),
+      itemCount: 0,
+    );
+  }
+
+  /// Moves [file] into a category folder. Empty [relativeFolderPath] is the
+  /// category root, so a file can move out of a subfolder.
+  Future<LibraryFile> moveToFolder(
+    LibraryFile file, {
+    required StorageCategory category,
+    String relativeFolderPath = '',
+  }) async {
+    _requireBrowsable(category);
+    final relative = _safeRelative(relativeFolderPath);
+    final targetDir = relative.isEmpty
+        ? _paths.categoryPath(category)
+        : p.join(_paths.categoryPath(category), _platformRelative(relative));
+    return _placeFile(file, targetDir, category);
+  }
+
+  /// Relative paths of user folders under [category], shallowest first.
+  Future<List<String>> userFolderPaths(StorageCategory category) async {
+    _requireBrowsable(category);
+    final root = p.normalize(_paths.categoryPath(category));
+    final relativePaths = <String>[];
+
+    Future<void> walk(String dir) async {
+      if (!await _fileStore.directoryExists(dir)) return;
+      final entries = await _fileStore.list(dir);
+      for (final entry in entries) {
+        if (!entry.isDirectory) continue;
+        final normalized = p.normalize(entry.path);
+        var relative = p.relative(normalized, from: root);
+        relative = relative.replaceAll('\\', '/');
+        if (relative.isEmpty || relative == '.' || relative.startsWith('..')) {
+          continue;
+        }
+        relativePaths.add(relative);
+        await walk(normalized);
+      }
+    }
+
+    await walk(root);
+    relativePaths.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    return relativePaths;
+  }
+
+  /// Folder that currently contains [file].
+  LibraryFolderLocation locationContaining(LibraryFile file) {
+    final categoryDir = p.normalize(_paths.categoryPath(file.category));
+    final parent = p.normalize(p.dirname(file.path));
+    if (p.equals(parent, categoryDir)) {
+      return LibraryFolderLocation(category: file.category);
+    }
+    var relative = p.relative(parent, from: categoryDir);
+    relative = relative.replaceAll('\\', '/');
+    if (relative == '.' || relative.startsWith('..')) {
+      return LibraryFolderLocation(category: file.category);
+    }
+    return LibraryFolderLocation(
+      category: file.category,
+      relativeSubPath: relative,
+    );
+  }
+
+  Future<LibraryFile> _placeFile(
+    LibraryFile file,
+    String targetDir,
+    StorageCategory category,
+  ) async {
     if (!await _fileStore.directoryExists(targetDir)) {
       await _fileStore.createDirectory(targetDir);
     }
 
+    final currentDir = p.normalize(p.dirname(file.path));
+    if (p.equals(currentDir, p.normalize(targetDir)) &&
+        file.category == category) {
+      return file;
+    }
+
     var targetPath = p.join(targetDir, file.name);
-    if (await _fileStore.exists(targetPath)) {
+    if (await _fileStore.exists(targetPath) &&
+        !p.equals(p.normalize(targetPath), p.normalize(file.path))) {
       final stamp = DateTime.now().millisecondsSinceEpoch;
       final ext = p.extension(file.name);
       final base = p.basenameWithoutExtension(file.name);
@@ -264,21 +373,45 @@ class MediaLibraryService {
     }
 
     final oldPath = file.path;
-    await _fileStore.rename(oldPath, targetPath);
-    invalidateScanCache();
-    if (_favorites.isFavorite(oldPath)) {
-      await _favorites.toggle(oldPath);
-      await _favorites.toggle(targetPath);
+    if (!p.equals(p.normalize(oldPath), p.normalize(targetPath))) {
+      await _fileStore.rename(oldPath, targetPath);
+      if (_favorites.isFavorite(oldPath)) {
+        await _favorites.toggle(oldPath);
+        await _favorites.toggle(targetPath);
+      }
+      await _onPathMoved?.call(oldPath, targetPath);
     }
-    await _onPathMoved?.call(oldPath, targetPath);
+    invalidateScanCache();
 
     return file.copyWith(
       path: targetPath,
-      category: targetCategory,
+      category: category,
       modifiedAt: await _fileStore.modifiedAt(targetPath),
       mimeType: lookupMimeType(targetPath),
     );
   }
+
+  void _requireBrowsable(StorageCategory category) {
+    if (!browsableCategories.contains(category)) {
+      throw ArgumentError('That folder cannot store files.');
+    }
+  }
+
+  String _safeRelative(String relative) {
+    final cleaned = relative.trim().replaceAll('\\', '/');
+    if (cleaned.isEmpty) return '';
+    final parts = cleaned.split('/').where((part) => part.isNotEmpty).toList();
+    if (parts.any((part) => part == '.' || part == '..')) {
+      throw ArgumentError('Invalid folder.');
+    }
+    for (final part in parts) {
+      validatedFolderName(part);
+    }
+    return parts.join('/');
+  }
+
+  String _platformRelative(String relative) =>
+      relative.replaceAll('/', p.separator);
 
   Future<LibraryFile> importExternalFile(
     String sourcePath,
@@ -351,6 +484,48 @@ class MediaLibraryService {
     );
   }
 
+  Future<Uint8List> readFile(String path) => _fileStore.readBytes(path);
+
+  Future<int> fileLength(String path) => _fileStore.length(path);
+
+  Future<Uint8List> readFileAt(String path, int offset, int length) =>
+      _fileStore.readAt(path, offset, length);
+
+  /// Writes a new library file and leaves any source file in place.
+  Future<LibraryFile> addGeneratedFile({
+    required String fileName,
+    required List<int> bytes,
+    required StorageCategory category,
+    String? mimeType,
+  }) async {
+    final targetDir = _paths.categoryPath(category);
+    if (!await _fileStore.directoryExists(targetDir)) {
+      await _fileStore.createDirectory(targetDir);
+    }
+
+    final safeName = p.basename(fileName);
+    var targetPath = p.join(targetDir, safeName);
+    if (await _fileStore.exists(targetPath)) {
+      final stamp = DateTime.now().millisecondsSinceEpoch;
+      final ext = p.extension(safeName);
+      final base = p.basenameWithoutExtension(safeName);
+      targetPath = p.join(targetDir, '${base}_$stamp$ext');
+    }
+
+    await _fileStore.writeBytes(targetPath, bytes);
+    invalidateScanCache();
+    await _imports?.acknowledgePaths([targetPath]);
+
+    return LibraryFile(
+      path: targetPath,
+      name: p.basename(targetPath),
+      category: category,
+      sizeBytes: bytes.length,
+      modifiedAt: await _fileStore.modifiedAt(targetPath),
+      mimeType: mimeType ?? lookupMimeType(targetPath),
+    );
+  }
+
   Future<void> delete(LibraryFile file) async {
     if (await _fileStore.exists(file.path)) {
       await _fileStore.delete(file.path);
@@ -368,6 +543,9 @@ class MediaLibraryService {
 
   Future<LibraryOpenResult> open(LibraryFile file) =>
       openLibraryFile(file, _fileStore);
+
+  Future<LibraryOpenResult> openWith(LibraryFile file) =>
+      openLibraryFileWithChooser(file, _fileStore);
 
   Future<void> share(LibraryFile file) {
     return shareLibraryFile(file, _fileStore);

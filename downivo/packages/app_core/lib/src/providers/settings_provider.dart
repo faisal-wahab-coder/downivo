@@ -159,7 +159,8 @@ class SettingsNotifier extends Notifier<AppSettings> {
           prefs.getString(_schedulerActionKey) ?? 'none',
         ),
       ),
-      defaultConnectionCount: prefs.getInt(_defaultConnectionCountKey) ?? 4,
+      defaultConnectionCount:
+          (prefs.getInt(_defaultConnectionCountKey) ?? 4).clamp(1, 8),
       autoReloadStuck: prefs.getBool(_autoReloadStuckKey) ?? true,
       categoryAutoOrganize: prefs.getBool(_categoryAutoOrganizeKey) ?? true,
     );
@@ -262,7 +263,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
   }
 
   Future<void> setDefaultConnectionCount(int count) async {
-    final clamped = count.clamp(1, 16);
+    final clamped = count.clamp(1, 8);
     final prefs = ref.read(sharedPreferencesProvider);
     await prefs.setInt(_defaultConnectionCountKey, clamped);
     state = state.copyWith(defaultConnectionCount: clamped);

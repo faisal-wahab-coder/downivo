@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../spacing.dart';
 import '../theme/udm_colors.dart';
+import '../theme/zfile_tokens.dart';
 
 /// Status bar footer showing live aggregate download stats.
 class DownloadStatusBar extends StatelessWidget {
@@ -24,6 +25,7 @@ class DownloadStatusBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final tokens = ZfileTokens.of(context);
 
     return Container(
       height: 28,
@@ -52,14 +54,14 @@ class DownloadStatusBar extends StatelessWidget {
                   _StatusChip(
                     label: 'Active',
                     value: '$activeCount',
-                    valueColor: UdmColors.signalCyan,
+                    valueColor: tokens.secondary,
                     isDark: isDark,
                   ),
                   _dot(isDark),
                   _StatusChip(
                     label: 'Completed',
                     value: '$completedCount',
-                    valueColor: UdmColors.successMoss,
+                    valueColor: tokens.secondaryDark,
                     isDark: isDark,
                   ),
                   if (queuedCount > 0) ...[
@@ -74,7 +76,7 @@ class DownloadStatusBar extends StatelessWidget {
                   _StatusChip(
                     label: 'Speed',
                     value: _formatSpeed(totalSpeedBytesPerSec),
-                    valueColor: UdmColors.successMoss,
+                    valueColor: tokens.secondaryDark,
                     isDark: isDark,
                   ),
                 ],

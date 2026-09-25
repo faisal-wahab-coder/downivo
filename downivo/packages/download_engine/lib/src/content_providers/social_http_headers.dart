@@ -130,6 +130,10 @@ class SocialHttpHeaders {
     return headers;
   }
 
+  /// Origin used as Referer when the file URL is a CDN, not the post page.
+  static Uri mediaPageUri(SocialPlatform platform) =>
+      Uri.parse(_originFor(platform));
+
   static String _pageReferer(Uri pageUrl) {
     if (pageUrl.scheme != 'http' && pageUrl.scheme != 'https') {
       return pageUrl.toString();

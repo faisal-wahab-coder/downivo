@@ -154,3 +154,18 @@ Release engineering: [`RELEASE.md`](RELEASE.md) · [`CHANGELOG.md`](CHANGELOG.md
 - [x] Multi-segment downloads, speed limit, scheduler, stall detection, checksums
 - [x] Instagram carousel slide recovery
 - [x] [`CHANGELOG.md`](CHANGELOG.md) for 1.3.0
+
+**1.4.0 — Save as Video/Audio (complete)**
+
+- [x] Version `1.4.0+6`
+- [x] Choose Video or Audio after a video link is resolved
+- [x] Save audio from a video already in Files
+- [x] [`CHANGELOG.md`](CHANGELOG.md) for 1.4.0
+
+**1.5.0 — Files folders (complete)**
+
+- [x] Version `1.5.0+7`
+- [x] Create folders, browse subfolders, and move files
+- [x] Open with another app; show a completed download in Files
+- [x] Threads posts resolve the actual photo or video
+- [x] [`CHANGELOG.md`](CHANGELOG.md) for 1.5.0

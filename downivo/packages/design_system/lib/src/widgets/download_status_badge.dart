@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_types/shared_types.dart';
 
 import '../theme/udm_colors.dart';
+import '../theme/zfile_tokens.dart';
 
 /// Colored status badge for download items.
 class DownloadStatusBadge extends StatelessWidget {
@@ -18,13 +19,14 @@ class DownloadStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (label, color, icon, pulsing) = _config;
+    final tokens = ZfileTokens.of(context);
+    final (label, color, icon, pulsing) = _config(tokens);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(999),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
@@ -48,7 +50,7 @@ class DownloadStatusBadge extends StatelessWidget {
     );
   }
 
-  (String, Color, IconData, bool) get _config {
+  (String, Color, IconData, bool) _config(ZfileTokens tokens) {
     if (isStuck && status == DownloadStatus.downloading) {
       return ('Stuck', UdmColors.cautionAmber, Icons.warning_rounded, true);
     }
@@ -59,13 +61,13 @@ class DownloadStatusBadge extends StatelessWidget {
     return switch (status) {
       DownloadStatus.downloading => (
           'Downloading',
-          UdmColors.signalCyan,
+          tokens.secondary,
           Icons.download_rounded,
           true
         ),
       DownloadStatus.completed => (
           'Completed',
-          UdmColors.successMoss,
+          tokens.secondaryDark,
           Icons.check_circle_rounded,
           false
         ),
@@ -77,7 +79,7 @@ class DownloadStatusBadge extends StatelessWidget {
         ),
       DownloadStatus.queued => (
           'Queued',
-          UdmColors.electricBlue,
+          tokens.primary,
           Icons.schedule_rounded,
           false
         ),
@@ -89,19 +91,19 @@ class DownloadStatusBadge extends StatelessWidget {
         ),
       DownloadStatus.cancelled => (
           'Cancelled',
-          UdmColors.fogSteel,
+          tokens.muted,
           Icons.cancel_rounded,
           false
         ),
       DownloadStatus.preparing => (
-          'Preparing',
-          UdmColors.signalCyan,
+          'Finding file',
+          tokens.secondary,
           Icons.hourglass_top_rounded,
           true
         ),
       DownloadStatus.verifying => (
           'Verifying',
-          UdmColors.successMoss,
+          tokens.secondaryDark,
           Icons.verified_rounded,
           true
         ),

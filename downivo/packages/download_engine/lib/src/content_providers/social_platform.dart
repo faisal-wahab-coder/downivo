@@ -23,6 +23,14 @@ enum SocialPlatform {
 
   final String label;
 
+  static SocialPlatform? fromLabel(String? label) {
+    if (label == null || label.isEmpty) return null;
+    for (final platform in SocialPlatform.values) {
+      if (platform.label == label) return platform;
+    }
+    return null;
+  }
+
   static SocialPlatform? fromUri(Uri uri) {
     if (isTelegramScheme(uri) || isTelegramHost(uri.host)) {
       return SocialPlatform.telegram;

@@ -99,6 +99,7 @@ class DownloadTask {
   bool get supportsMultiSegment => connectionCount > 1 && segments.isNotEmpty;
 
   DownloadTask copyWith({
+    String? url,
     String? fileName,
     DownloadStatus? status,
     double? progress,
@@ -109,6 +110,7 @@ class DownloadTask {
     int? bytesReceived,
     int? speedBytesPerSec,
     String? errorMessage,
+    bool clearError = false,
     DownloadPriority? priority,
     DateTime? updatedAt,
     String? thumbnailUrl,
@@ -125,7 +127,7 @@ class DownloadTask {
   }) {
     return DownloadTask(
       id: id,
-      url: url,
+      url: url ?? this.url,
       fileName: fileName ?? this.fileName,
       filePath: clearFilePath ? null : (filePath ?? this.filePath),
       fileSize: fileSize ?? this.fileSize,
@@ -136,7 +138,7 @@ class DownloadTask {
       speedBytesPerSec: speedBytesPerSec ?? this.speedBytesPerSec,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      errorMessage: errorMessage ?? this.errorMessage,
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       priority: priority ?? this.priority,
       thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
       platform: platform ?? this.platform,

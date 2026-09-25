@@ -1,15 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_types/shared_types.dart';
 
+import '../spacing.dart';
 import 'udm_colors.dart';
+import 'zfile_tokens.dart';
 
 abstract final class AppTheme {
   static ThemeData light({Color? seedColor}) {
-    return _baseTheme(_lightScheme(seedColor ?? UdmColors.electricBlue));
+    return _baseTheme(
+      _lightScheme(seedColor),
+      seedColor == null ? ZfileTokens.light : ZfileTokens.light.copyWith(primary: seedColor),
+    );
   }
 
   static ThemeData dark({Color? seedColor}) {
-    return _baseTheme(_darkScheme(seedColor ?? UdmColors.signalCyan));
+    return _baseTheme(
+      _darkScheme(seedColor),
+      seedColor == null ? ZfileTokens.dark : ZfileTokens.dark.copyWith(primary: seedColor),
+    );
   }
 
   static ThemeData fromPreference(
@@ -26,210 +35,473 @@ abstract final class AppTheme {
     };
   }
 
-  static ColorScheme _darkScheme(Color primary) {
+  static ColorScheme _darkScheme(Color? seed) {
+    final tokens = ZfileTokens.dark;
+    final primary = seed ?? tokens.primary;
     return ColorScheme.dark(
       primary: primary,
-      onPrimary: UdmColors.onAccent,
-      primaryContainer: UdmColors.cyanDim,
-      onPrimaryContainer: UdmColors.porcelain,
-      secondary: UdmColors.fogSteel,
-      onSecondary: UdmColors.voidGraphite,
-      secondaryContainer: UdmColors.raisedSlate,
-      onSecondaryContainer: UdmColors.porcelain,
+      onPrimary: tokens.onAccent,
+      primaryContainer: tokens.primaryContainer,
+      onPrimaryContainer: tokens.primaryLight,
+      secondary: tokens.secondary,
+      onSecondary: tokens.onAccent,
+      secondaryContainer: tokens.secondaryContainer,
+      onSecondaryContainer: tokens.onAccent,
       tertiary: UdmColors.cautionAmber,
-      onTertiary: UdmColors.onAccent,
+      onTertiary: tokens.onAccent,
+      tertiaryContainer: UdmColors.darkImagesBackground,
+      onTertiaryContainer: UdmColors.darkImagesIcon,
       error: UdmColors.faultCoral,
-      onError: UdmColors.porcelain,
-      surface: UdmColors.voidGraphite,
-      onSurface: UdmColors.porcelain,
-      onSurfaceVariant: UdmColors.fogSteel,
-      surfaceContainerLowest: UdmColors.insetWell,
-      surfaceContainerLow: UdmColors.raisedSlate,
-      surfaceContainer: UdmColors.raisedSlate,
-      surfaceContainerHigh: const Color(0xFF222834),
-      surfaceContainerHighest: const Color(0xFF2A3140),
-      outline: UdmColors.hairline,
-      outlineVariant: UdmColors.hairline,
+      onError: tokens.onGradientHeading,
+      surface: tokens.canvas,
+      onSurface: tokens.heading,
+      onSurfaceVariant: tokens.body,
+      surfaceContainerLowest: tokens.surface,
+      surfaceContainerLow: tokens.surface,
+      surfaceContainer: tokens.surfaceElevated,
+      surfaceContainerHigh: tokens.surfaceElevated,
+      surfaceContainerHighest: tokens.border,
+      outline: tokens.border,
+      outlineVariant: tokens.borderSubtle,
     );
   }
 
-  static ColorScheme _lightScheme(Color primary) {
+  static ColorScheme _lightScheme(Color? seed) {
+    final tokens = ZfileTokens.light;
+    final primary = seed ?? tokens.primary;
     return ColorScheme.light(
       primary: primary,
-      onPrimary: UdmColors.onAccent,
-      primaryContainer: const Color(0xFFD6E4FF),
-      onPrimaryContainer: UdmColors.ink,
-      secondary: UdmColors.slateMute,
-      onSecondary: UdmColors.whiteSurface,
-      secondaryContainer: const Color(0xFFE8ECF1),
-      onSecondaryContainer: UdmColors.ink,
+      onPrimary: tokens.onGradientHeading,
+      primaryContainer: tokens.primaryContainer,
+      onPrimaryContainer: tokens.primaryDark,
+      secondary: tokens.secondary,
+      onSecondary: tokens.onAccent,
+      secondaryContainer: tokens.secondaryContainer,
+      onSecondaryContainer: tokens.onAccent,
       tertiary: UdmColors.cautionAmber,
-      onTertiary: UdmColors.ink,
+      onTertiary: tokens.onAccent,
+      tertiaryContainer: UdmColors.imagesBackground,
+      onTertiaryContainer: tokens.heading,
       error: UdmColors.faultCoral,
-      onError: UdmColors.whiteSurface,
-      surface: UdmColors.paper,
-      onSurface: UdmColors.ink,
-      onSurfaceVariant: UdmColors.slateMute,
-      surfaceContainerLowest: UdmColors.whiteSurface,
-      surfaceContainerLow: UdmColors.whiteSurface,
-      surfaceContainer: UdmColors.whiteSurface,
-      surfaceContainerHigh: const Color(0xFFEEF1F4),
-      surfaceContainerHighest: const Color(0xFFE4E9EE),
-      outline: UdmColors.lightHairline,
-      outlineVariant: UdmColors.lightHairline,
+      onError: tokens.onGradientHeading,
+      surface: tokens.canvas,
+      onSurface: tokens.heading,
+      onSurfaceVariant: tokens.body,
+      surfaceContainerLowest: tokens.surface,
+      surfaceContainerLow: tokens.surface,
+      surfaceContainer: tokens.surface,
+      surfaceContainerHigh: tokens.surface,
+      surfaceContainerHighest: tokens.border,
+      outline: tokens.border,
+      outlineVariant: tokens.borderSubtle,
     );
   }
 
-  static ThemeData _baseTheme(ColorScheme scheme) {
+  static ThemeData _baseTheme(ColorScheme scheme, ZfileTokens tokens) {
+    const headingFamily = 'Poppins';
+    const bodyFamily = 'Inter';
+    final headingFallbacks = const ['Arial'];
+    final bodyFallbacks = const ['Arial'];
+
+    TextStyle poppins({
+      required double size,
+      required FontWeight weight,
+      double height = 1.3,
+      Color? color,
+    }) {
+      return TextStyle(
+        fontFamily: headingFamily,
+        fontFamilyFallback: headingFallbacks,
+        package: 'design_system',
+        fontSize: size,
+        fontWeight: weight,
+        height: height,
+        color: color,
+      );
+    }
+
+    TextStyle inter({
+      required double size,
+      required FontWeight weight,
+      double height = 1.4,
+      Color? color,
+    }) {
+      return TextStyle(
+        fontFamily: bodyFamily,
+        fontFamilyFallback: bodyFallbacks,
+        package: 'design_system',
+        fontSize: size,
+        fontWeight: weight,
+        height: height,
+        color: color,
+      );
+    }
+
+    final buttonLabel = poppins(size: 14, weight: FontWeight.w600, height: 1);
     final isDark = scheme.brightness == Brightness.dark;
+
     final baseline = ThemeData(
       useMaterial3: true,
       brightness: scheme.brightness,
       colorScheme: scheme,
+      fontFamily: bodyFamily,
+      package: 'design_system',
+      scaffoldBackgroundColor: tokens.canvas,
+      extensions: [tokens],
     );
-    final textTheme = baseline.textTheme;
 
     return baseline.copyWith(
-      scaffoldBackgroundColor: scheme.surface,
-      textTheme: textTheme.copyWith(
-        headlineSmall: textTheme.headlineSmall?.copyWith(
-          fontWeight: FontWeight.w600,
-          letterSpacing: -0.4,
+      textTheme: TextTheme(
+        displaySmall: poppins(
+          size: 24,
+          weight: FontWeight.w700,
+          height: 1.25,
+          color: tokens.heading,
         ),
-        titleLarge: textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.w600,
-          letterSpacing: -0.3,
+        headlineMedium: poppins(
+          size: 24,
+          weight: FontWeight.w700,
+          height: 1.25,
+          color: tokens.heading,
         ),
-        titleMedium: textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w600,
+        headlineSmall: poppins(
+          size: 22,
+          weight: FontWeight.w700,
+          height: 1.2,
+          color: tokens.heading,
         ),
-        titleSmall: textTheme.titleSmall?.copyWith(
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.8,
-          fontSize: 12,
-          color: scheme.onSurfaceVariant,
+        titleLarge: poppins(
+          size: 16,
+          weight: FontWeight.w600,
+          color: tokens.heading,
         ),
-        labelSmall: textTheme.labelSmall?.copyWith(
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.6,
-          fontSize: 11,
+        titleMedium: poppins(
+          size: 15,
+          weight: FontWeight.w600,
+          color: tokens.heading,
+        ),
+        titleSmall: poppins(
+          size: 13,
+          weight: FontWeight.w600,
+          height: 1.4,
+          color: tokens.heading,
+        ),
+        bodyLarge: inter(
+          size: 14,
+          weight: FontWeight.w400,
+          height: 1.5,
+          color: tokens.heading,
+        ),
+        bodyMedium: inter(
+          size: 13,
+          weight: FontWeight.w400,
+          height: 1.5,
+          color: tokens.body,
+        ),
+        bodySmall: inter(
+          size: 12,
+          weight: FontWeight.w400,
+          color: tokens.body,
+        ),
+        labelLarge: buttonLabel,
+        labelMedium: inter(
+          size: 12,
+          weight: FontWeight.w500,
+          color: tokens.heading,
+        ),
+        labelSmall: inter(
+          size: 11,
+          weight: FontWeight.w400,
+          color: tokens.muted,
         ),
       ),
       appBarTheme: AppBarTheme(
         centerTitle: false,
         elevation: 0,
         scrolledUnderElevation: 0,
-        backgroundColor: scheme.surface,
-        foregroundColor: scheme.onSurface,
-        titleTextStyle: textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.w600,
-          color: scheme.onSurface,
+        backgroundColor: tokens.canvas,
+        foregroundColor: tokens.heading,
+        surfaceTintColor: Colors.transparent,
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+          statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
         ),
+        titleTextStyle: poppins(
+          size: 16,
+          weight: FontWeight.w600,
+          color: tokens.heading,
+        ),
+        iconTheme: IconThemeData(color: tokens.heading),
+        toolbarHeight: UdmSpacing.topNavHeight,
       ),
       navigationBarTheme: NavigationBarThemeData(
         elevation: 0,
-        height: 80,
-        backgroundColor: scheme.surface,
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        indicatorColor: scheme.primary.withValues(alpha: 0.18),
+        height: UdmSpacing.bottomNavHeight,
+        backgroundColor: tokens.surface,
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: tokens.iconActiveBg,
+        indicatorShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(UdmRadius.navActive),
+        ),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return inter(
+            size: 10,
+            weight: selected ? FontWeight.w600 : FontWeight.w400,
+            height: 1.2,
+            color: selected ? tokens.heading : tokens.iconInactive,
+          );
+        }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return IconThemeData(
-            color: selected ? scheme.primary : scheme.onSurfaceVariant,
+            size: 22,
+            color: selected ? tokens.iconActiveFg : tokens.iconInactive,
           );
         }),
       ),
       navigationRailTheme: NavigationRailThemeData(
-        backgroundColor: scheme.surface,
-        indicatorColor: scheme.primary.withValues(alpha: 0.18),
-        selectedIconTheme: IconThemeData(color: scheme.primary),
-        unselectedIconTheme: IconThemeData(color: scheme.onSurfaceVariant),
-        selectedLabelTextStyle: TextStyle(
-          color: scheme.primary,
-          fontWeight: FontWeight.w600,
-          fontSize: 12,
+        backgroundColor: tokens.surface,
+        indicatorColor: tokens.iconActiveBg,
+        indicatorShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(UdmRadius.navActive),
         ),
-        unselectedLabelTextStyle: TextStyle(
-          color: scheme.onSurfaceVariant,
-          fontSize: 12,
+        selectedIconTheme: IconThemeData(color: tokens.iconActiveFg),
+        unselectedIconTheme: IconThemeData(color: tokens.iconInactive),
+        selectedLabelTextStyle: inter(
+          size: 11,
+          weight: FontWeight.w600,
+          color: tokens.heading,
+        ),
+        unselectedLabelTextStyle: inter(
+          size: 11,
+          weight: FontWeight.w400,
+          color: tokens.iconInactive,
         ),
       ),
       cardTheme: CardThemeData(
-        elevation: 0,
-        color: scheme.surfaceContainerLow,
+        elevation: isDark ? 8 : 2,
+        shadowColor: isDark ? const Color(0xFF000000) : UdmColors.primary,
+        surfaceTintColor: Colors.transparent,
+        color: tokens.surface,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: scheme.outline.withValues(alpha: 0.7)),
+          borderRadius: BorderRadius.circular(UdmRadius.stat),
         ),
       ),
       dividerTheme: DividerThemeData(
-        color: scheme.outline.withValues(alpha: 0.7),
+        color: tokens.border,
         space: 1,
         thickness: 1,
       ),
+      listTileTheme: ListTileThemeData(
+        iconColor: tokens.iconInactive,
+        textColor: tokens.heading,
+        titleTextStyle: poppins(
+          size: 13,
+          weight: FontWeight.w600,
+          height: 1.4,
+          color: tokens.heading,
+        ),
+        subtitleTextStyle: inter(
+          size: 11,
+          weight: FontWeight.w400,
+          color: tokens.muted,
+        ),
+      ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: isDark ? UdmColors.insetWell : scheme.surfaceContainerHighest,
+        fillColor: tokens.surface,
+        hintStyle: inter(size: 14, weight: FontWeight.w400, color: tokens.muted),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: scheme.outline),
+          borderRadius: BorderRadius.circular(UdmRadius.md),
+          borderSide: BorderSide(color: tokens.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: scheme.outline),
+          borderRadius: BorderRadius.circular(UdmRadius.md),
+          borderSide: BorderSide(color: tokens.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: scheme.primary, width: 1.5),
+          borderRadius: BorderRadius.circular(UdmRadius.md),
+          borderSide: BorderSide(color: tokens.primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(UdmRadius.md),
           borderSide: BorderSide(color: scheme.error),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size(44, 44),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          backgroundColor: tokens.secondary,
+          foregroundColor: tokens.onAccent,
+          disabledBackgroundColor: tokens.secondary.withValues(alpha: 0.4),
+          disabledForegroundColor: tokens.onAccent.withValues(alpha: 0.5),
+          minimumSize: const Size(44, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          textStyle: buttonLabel,
+          shape: const StadiumBorder(),
+          elevation: 6,
+          shadowColor: tokens.buttonGlow.first.color,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size(44, 44),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+          foregroundColor: tokens.primary,
+          minimumSize: const Size(44, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          textStyle: buttonLabel.copyWith(color: tokens.primary),
+          shape: const StadiumBorder(),
+          side: BorderSide(color: tokens.primary),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: tokens.primary,
+          textStyle: buttonLabel.copyWith(color: tokens.primary),
+          shape: const StadiumBorder(),
+        ),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: tokens.secondary,
+        foregroundColor: tokens.onAccent,
+        elevation: 6,
+        focusElevation: 8,
+        hoverElevation: 8,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(UdmRadius.navActive),
+        ),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) return tokens.primary;
+            return Colors.transparent;
+          }),
+          foregroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return isDark ? tokens.onAccent : tokens.onGradientHeading;
+            }
+            return tokens.heading;
+          }),
+          iconColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return isDark ? tokens.onAccent : tokens.onGradientHeading;
+            }
+            return tokens.body;
+          }),
+          side: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return BorderSide(color: tokens.primary);
+            }
+            return BorderSide(color: tokens.body.withValues(alpha: 0.45));
+          }),
+          textStyle: WidgetStatePropertyAll(
+            poppins(size: 13, weight: FontWeight.w600, height: 1.2),
           ),
         ),
       ),
+      radioTheme: RadioThemeData(
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return tokens.primary;
+          return const Color(0xFF746C8F);
+        }),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return tokens.primary;
+          return Colors.transparent;
+        }),
+        checkColor: WidgetStatePropertyAll(
+          isDark ? tokens.onAccent : tokens.onGradientHeading,
+        ),
+        side: const BorderSide(color: Color(0xFF746C8F), width: 1.5),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return isDark ? tokens.onAccent : tokens.onGradientHeading;
+          }
+          return const Color(0xFF746C8F);
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return tokens.primary;
+          return Colors.transparent;
+        }),
+        trackOutlineColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return tokens.primary;
+          return const Color(0xFF746C8F);
+        }),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: tokens.surface,
+        selectedColor: tokens.secondaryContainer,
+        disabledColor: tokens.borderSubtle,
+        labelStyle: inter(size: 12, weight: FontWeight.w500, color: tokens.heading),
+        secondaryLabelStyle: inter(
+          size: 12,
+          weight: FontWeight.w500,
+          color: tokens.onAccent,
+        ),
+        side: BorderSide(color: tokens.border),
+        shape: const StadiumBorder(),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      ),
+      tabBarTheme: TabBarThemeData(
+        indicatorColor: tokens.secondary,
+        labelColor: tokens.heading,
+        unselectedLabelColor: tokens.body,
+        dividerColor: tokens.border,
+        labelStyle: poppins(size: 14, weight: FontWeight.w600, height: 1),
+        unselectedLabelStyle: poppins(size: 14, weight: FontWeight.w500, height: 1),
+        indicatorSize: TabBarIndicatorSize.label,
+      ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: scheme.surfaceContainerHigh,
-        contentTextStyle: TextStyle(color: scheme.onSurface),
+        backgroundColor: tokens.surfaceElevated,
+        contentTextStyle: inter(
+          size: 13,
+          weight: FontWeight.w400,
+          color: tokens.heading,
+        ),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: scheme.outline),
+          borderRadius: BorderRadius.circular(UdmRadius.md),
         ),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
-        color: scheme.primary,
-        linearTrackColor: scheme.outline.withValues(alpha: 0.45),
+        color: tokens.chartFill,
+        linearTrackColor: tokens.chartTrack,
+        circularTrackColor: tokens.chartTrack,
       ),
       bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: scheme.surfaceContainerLow,
+        backgroundColor: tokens.surfaceElevated,
+        surfaceTintColor: Colors.transparent,
+        modalBackgroundColor: tokens.surfaceElevated,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(UdmRadius.sheet)),
         ),
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: scheme.surfaceContainerLow,
+        backgroundColor: tokens.surfaceElevated,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: poppins(
+          size: 16,
+          weight: FontWeight.w600,
+          color: tokens.heading,
+        ),
+        contentTextStyle: inter(
+          size: 13,
+          weight: FontWeight.w400,
+          height: 1.5,
+          color: tokens.body,
+        ),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(UdmRadius.xl),
         ),
       ),
+      iconTheme: IconThemeData(color: tokens.iconInactive),
+      primaryIconTheme: IconThemeData(color: tokens.primary),
     );
   }
 }

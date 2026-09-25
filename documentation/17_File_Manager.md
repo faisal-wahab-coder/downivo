@@ -11,7 +11,8 @@
 - Favorites (star + Favorites folder)
 - File detail (from the image viewer 3-dot, or tap of a non-image) — metadata only
 - In-app image gallery (tap image → full-screen; swipe siblings; on-image More actions)
-- Open / share / save to gallery (photos & videos) / rename / move / delete
+- Open / Open with (Android app chooser) / Show in Files / share / save to gallery (photos & videos) / rename / move / delete
+- User folders inside a category (New folder, Move to folder). Long-press selects files; Move to folder sends the selection into a category folder or another category.
 - Delete on list/grid rows and in `FileActionsSheet` (confirm)
 - Import banner (FR-035)
 - List default + grid toggle (grid tiles fill with the image)

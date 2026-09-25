@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../spacing.dart';
 import '../theme/udm_colors.dart';
+import '../theme/zfile_tokens.dart';
 
 /// Real-time download speed throughput graph.
 ///
@@ -34,6 +35,7 @@ class SpeedGraphWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final tokens = ZfileTokens.of(context);
 
     return Container(
       height: height,
@@ -54,6 +56,7 @@ class SpeedGraphWidget extends StatelessWidget {
               history: speedHistory,
               speedLimit: speedLimitBytesPerSec,
               isDark: isDark,
+              lineColor: tokens.secondary,
             ),
           ),
           Positioned(
@@ -78,7 +81,7 @@ class SpeedGraphWidget extends StatelessWidget {
                   Icon(
                     Icons.show_chart_rounded,
                     size: 12,
-                    color: UdmColors.signalCyan,
+                    color: tokens.secondary,
                   ),
                   const SizedBox(width: 4),
                   Text(
@@ -93,7 +96,7 @@ class SpeedGraphWidget extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
-                      color: UdmColors.signalCyan,
+                      color: tokens.secondary,
                     ),
                   ),
                   if (speedLimitBytesPerSec > 0) ...[
@@ -131,11 +134,13 @@ class _SpeedGraphPainter extends CustomPainter {
     required this.history,
     required this.speedLimit,
     required this.isDark,
+    required this.lineColor,
   });
 
   final List<int> history;
   final int speedLimit;
   final bool isDark;
+  final Color lineColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -197,8 +202,8 @@ class _SpeedGraphPainter extends CustomPainter {
       Offset(0, 0),
       Offset(0, h),
       [
-        UdmColors.signalCyan.withValues(alpha: 0.4),
-        UdmColors.signalCyan.withValues(alpha: 0.0),
+        lineColor.withValues(alpha: 0.4),
+        lineColor.withValues(alpha: 0.0),
       ],
     );
     canvas.drawPath(fillPath, Paint()..shader = gradient);
@@ -207,7 +212,7 @@ class _SpeedGraphPainter extends CustomPainter {
     canvas.drawPath(
       path,
       Paint()
-        ..color = UdmColors.signalCyan
+        ..color = lineColor
         ..strokeWidth = 2
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round,
@@ -230,6 +235,7 @@ class _SpeedGraphPainter extends CustomPainter {
   @override
   bool shouldRepaint(_SpeedGraphPainter oldDelegate) {
     return oldDelegate.history != history ||
-        oldDelegate.speedLimit != speedLimit;
+        oldDelegate.speedLimit != speedLimit ||
+        oldDelegate.lineColor != lineColor;
   }
 }

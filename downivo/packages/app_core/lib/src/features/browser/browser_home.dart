@@ -36,16 +36,17 @@ class BrowserHome extends StatelessWidget {
         _QuickSearchField(onSubmitted: onSearch),
         const SizedBox(height: UdmSpacing.xl),
         const UdmSectionLabel(label: 'Quick links'),
-        ...quickLinks.map(
-          (entry) => Card(
+        for (var i = 0; i < quickLinks.length; i++) ...[
+          if (i > 0) const SizedBox(height: UdmSpacing.listItemGap),
+          Card(
             child: ListTile(
               leading: const Icon(Icons.link),
-              title: Text(entry.$1),
-              subtitle: Text(entry.$2),
-              onTap: () => onQuickLink(entry.$2),
+              title: Text(quickLinks[i].$1),
+              subtitle: Text(quickLinks[i].$2),
+              onTap: () => onQuickLink(quickLinks[i].$2),
             ),
           ),
-        ),
+        ],
       ],
     );
   }

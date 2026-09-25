@@ -84,5 +84,17 @@ void main() {
       expect(results.single.directUrl, threadsImageUrl);
       expect(results.single.mimeType, 'image/jpeg');
     });
+
+    test('TH-IMG-008 empty candidates stub is skipped for the later file', () {
+      final results = ThreadsResolver.parseHtmlResources(
+        html: threadsStubThenImageHtml(),
+        pageUrl: Uri.parse(threadsPostUrl),
+        contentId: threadsPostId,
+      );
+      expect(results, hasLength(1));
+      expect(results.single.directUrl, threadsImageUrl);
+      expect(results.single.directUrl, isNot(threadsImageUrlTwo));
+      expect(results.single.mimeType, 'image/jpeg');
+    });
   });
 }

@@ -127,7 +127,6 @@ class YouTubeResolver {
     String? thumbnailUrl,
     List<MediaFormat> formats = const [],
   }) {
-    final recommended = formats.where((f) => f.url == mediaUrl).toList();
     final labeled = formats
         .map(
           (f) => MediaFormat(
@@ -138,11 +137,15 @@ class YouTubeResolver {
             width: f.width,
             bitrate: f.bitrate,
             sizeBytes: f.sizeBytes,
-            isRecommended: f.url == mediaUrl,
+            isRecommended:
+                f.track != MediaFormatTrack.audio && f.url == mediaUrl,
+            track: f.track,
+            extractAudio: f.extractAudio,
           ),
         )
         .toList();
-    final selected = recommended.isNotEmpty ? recommended.first : null;
+    final selected = labeled.where((f) => f.isRecommended).toList();
+    final picked = selected.isNotEmpty ? selected.first : null;
     return DiscoveredResource(
       directUrl: mediaUrl,
       fileName: MediaExtractor.buildFileNameForSocial(
@@ -151,18 +154,18 @@ class YouTubeResolver {
         mediaUrl: mediaUrl,
         title: title,
         fallbackSlug: videoId,
-        mimeHint: selected?.mimeType ?? 'video/mp4',
+        mimeHint: picked?.mimeType ?? 'video/mp4',
       ),
       platform: SocialPlatform.youtube.label,
       pageUrl: pageUrl.toString(),
       title: title,
-      mimeType: selected?.mimeType ?? 'video/mp4',
+      mimeType: picked?.mimeType ?? 'video/mp4',
       thumbnailUrl: thumbnailUrl,
       author: author,
       durationSeconds: durationSeconds,
-      width: selected?.width,
-      height: selected?.height,
-      contentLengthBytes: selected?.sizeBytes,
+      width: picked?.width,
+      height: picked?.height,
+      contentLengthBytes: picked?.sizeBytes,
       kind: DiscoveredResourceKind.video,
       formats: labeled,
     );
@@ -279,28 +282,36 @@ class YouTubeResolver {
     return null;
   }
 
+  /// Progressive video plus an M4A extracted from that same file, for tests.
+  static List<MediaFormat> formatsFromStreamingDataForTest(
+    Object? streamingData,
+  ) {
+    return _parseStreaming(streamingData).formats;
+  }
+
   static _StreamingPick? _streamingFromPlayerData(Map<String, dynamic> data) {
-    final formats = _formatsFromStreamingData(data['streamingData']);
-    if (formats.isEmpty) {
+    final parsed = _parseStreaming(data['streamingData']);
+    if (parsed.urlsByItag.isEmpty) {
       final url = _pickFromStreamingData(data['streamingData']);
       if (url == null) return null;
       return _StreamingPick(url: url, formats: const []);
     }
-    final byItag = <String, int>{
-      for (final format in formats)
-        format.url: int.tryParse(
-              Uri.tryParse(format.url)?.queryParameters['itag'] ?? '',
-            ) ??
-            0,
-    };
-    final best = _pickBestByItag(byItag) ?? formats.first.url;
-    return _StreamingPick(url: best, formats: formats);
+    final best = _pickBestByItag(parsed.urlsByItag) ??
+        parsed.formats.firstOrNull?.url ??
+        parsed.urlsByItag.keys.firstOrNull;
+    if (best == null) return null;
+    return _StreamingPick(url: best, formats: parsed.formats);
   }
 
-  static List<MediaFormat> _formatsFromStreamingData(Object? streamingData) {
-    if (streamingData is! Map) return const [];
+  static _ParsedStreaming _parseStreaming(Object? streamingData) {
+    if (streamingData is! Map) {
+      return const _ParsedStreaming(urlsByItag: {}, formats: []);
+    }
     final seen = <String>{};
-    final formats = <MediaFormat>[];
+    final muxed = <MediaFormat>[];
+    final videoOnly = <MediaFormat>[];
+    final urlsByItag = <String, int>{};
+
     for (final key in ['formats', 'adaptiveFormats']) {
       final items = streamingData[key];
       if (items is! List) continue;
@@ -310,9 +321,12 @@ class YouTubeResolver {
         if (url is! String || !url.startsWith('http')) continue;
         if (url.contains('sabr=')) continue;
         if (!seen.add(url)) continue;
+        final rawMime = item['mimeType']?.toString();
+        final mime = rawMime?.split(';').first.toLowerCase();
         final itag = int.tryParse('${item['itag']}') ??
             int.tryParse(Uri.tryParse(url)?.queryParameters['itag'] ?? '') ??
             0;
+        urlsByItag[url] = itag;
         final height =
             item['height'] is num ? (item['height'] as num).toInt() : null;
         final width =
@@ -322,28 +336,86 @@ class YouTubeResolver {
         final size = item['contentLength'] == null
             ? null
             : int.tryParse('${item['contentLength']}');
-        final mime = item['mimeType']?.toString().split(';').first;
         final qualityLabel = item['qualityLabel']?.toString();
-        formats.add(
-          MediaFormat(
-            url: url,
-            label: _labelForItag(
-              itag,
-              qualityLabel: qualityLabel,
-              height: height,
-              mime: mime,
-            ),
-            mimeType: mime,
+        final kind = _trackKind(itag, rawMime, mime);
+
+        if (kind == _YtTrack.audio) continue;
+
+        final format = MediaFormat(
+          url: url,
+          label: _labelForItag(
+            itag,
+            qualityLabel: qualityLabel,
             height: height,
-            width: width,
-            bitrate: bitrate,
-            sizeBytes: size,
+            mime: mime,
           ),
+          mimeType: mime,
+          height: height,
+          width: width,
+          bitrate: bitrate,
+          sizeBytes: size,
         );
+        if (kind == _YtTrack.muxed) {
+          muxed.add(format);
+        } else if (kind == _YtTrack.videoOnly) {
+          videoOnly.add(format);
+        }
       }
     }
-    return formats;
+
+    final videos = muxed.isNotEmpty ? muxed : videoOnly;
+    final source = _bestMuxed(muxed);
+    final audio = source == null
+        ? const <MediaFormat>[]
+        : [
+            MediaFormat(
+              url: source.url,
+              label: 'M4A',
+              mimeType: 'audio/mp4',
+              track: MediaFormatTrack.audio,
+              extractAudio: true,
+            ),
+          ];
+    return _ParsedStreaming(
+      urlsByItag: urlsByItag,
+      formats: [...videos, ...audio],
+    );
   }
+
+  /// Separate googlevideo audio URLs are often rejected with 403.
+  /// Save audio by copying the track out of the muxed file that already downloads.
+  static MediaFormat? _bestMuxed(List<MediaFormat> muxed) {
+    if (muxed.isEmpty) return null;
+    for (final itag in _preferredItags) {
+      for (final format in muxed) {
+        final value = int.tryParse(
+              Uri.tryParse(format.url)?.queryParameters['itag'] ?? '',
+            ) ??
+            0;
+        if (value == itag) return format;
+      }
+    }
+    return muxed.first;
+  }
+
+  static _YtTrack _trackKind(int itag, String? rawMime, String? mime) {
+    final lower = rawMime?.toLowerCase() ?? '';
+    if (mime != null && mime.startsWith('audio/')) return _YtTrack.audio;
+    if (_audioItags.contains(itag)) return _YtTrack.audio;
+    if (mime != null && mime.startsWith('video/')) {
+      if (_muxedItags.contains(itag)) return _YtTrack.muxed;
+      if (lower.contains('mp4a') ||
+          lower.contains('opus') ||
+          lower.contains('vorbis')) {
+        return _YtTrack.muxed;
+      }
+      return _YtTrack.videoOnly;
+    }
+    return _YtTrack.other;
+  }
+
+  static const _muxedItags = {18, 22, 37, 38, 59, 78};
+  static const _audioItags = {139, 140, 141, 171, 172, 249, 250, 251, 256, 258};
 
   static String _labelForItag(
     int itag, {
@@ -470,6 +542,15 @@ class YouTubeResolver {
     );
     return pattern.firstMatch(html)?.group(1);
   }
+}
+
+enum _YtTrack { muxed, videoOnly, audio, other }
+
+class _ParsedStreaming {
+  const _ParsedStreaming({required this.urlsByItag, required this.formats});
+
+  final Map<String, int> urlsByItag;
+  final List<MediaFormat> formats;
 }
 
 class _StreamingPick {

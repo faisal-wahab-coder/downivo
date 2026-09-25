@@ -53,6 +53,47 @@ void main() {
     );
   });
 
+  test('FM-012 create folder and move files into it', () async {
+    final created = await service.createFolder(
+      category: StorageCategory.videos,
+      name: 'Lectures',
+    );
+    expect(created.location.relativeSubPath, 'Lectures');
+    expect(await Directory(created.path).exists(), isTrue);
+
+    final files = await service.listFiles(const LibraryQuery());
+    final moved = await service.moveToFolder(
+      files.first,
+      category: StorageCategory.videos,
+      relativeFolderPath: 'Lectures',
+    );
+    expect(moved.path, contains('Lectures'));
+    expect(await File(moved.path).exists(), isTrue);
+    expect(await File(files.first.path).exists(), isFalse);
+
+    final folders = await service.userFolderPaths(StorageCategory.videos);
+    expect(folders, ['Lectures']);
+    expect(service.locationContaining(moved).relativeSubPath, 'Lectures');
+
+    final back = await service.moveToFolder(
+      moved,
+      category: StorageCategory.videos,
+    );
+    expect(service.locationContaining(back).relativeSubPath, isEmpty);
+    expect(p.basename(back.path), files.first.name);
+  });
+
+  test('FM-013 rejects unsafe folder names', () async {
+    expect(
+      () => service.createFolder(category: StorageCategory.audio, name: 'a/b'),
+      throwsA(isA<ArgumentError>()),
+    );
+    expect(
+      () => service.createFolder(category: StorageCategory.audio, name: '   '),
+      throwsA(isA<ArgumentError>()),
+    );
+  });
+
   test('FM-005 move between categories', () async {
     final files = await service.listFiles(const LibraryQuery());
     final moved = await service.move(files.first, StorageCategory.documents);
@@ -82,6 +123,24 @@ void main() {
     );
     expect(await source.exists(), isFalse);
     expect(await File(imported.path).exists(), isTrue);
+  });
+
+  test('FM-011 addGeneratedFile keeps the source and writes audio', () async {
+    final paths = StoragePaths(rootPath: root.path);
+    final source = File(
+      p.join(paths.categoryPath(StorageCategory.videos), 'alpha.mp4'),
+    );
+    final saved = await service.addGeneratedFile(
+      fileName: 'alpha.m4a',
+      bytes: [1, 2, 3, 4],
+      category: StorageCategory.audio,
+      mimeType: 'audio/mp4',
+    );
+
+    expect(await source.exists(), isTrue);
+    expect(saved.category, StorageCategory.audio);
+    expect(saved.name, 'alpha.m4a');
+    expect(await File(saved.path).readAsBytes(), [1, 2, 3, 4]);
   });
 
   test('FM-009 saveToGallery rejects non-media', () async {

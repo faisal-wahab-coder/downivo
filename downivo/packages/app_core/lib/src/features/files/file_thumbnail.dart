@@ -1,3 +1,4 @@
+import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:media_library/media_library.dart';
 import 'package:storage/storage.dart';
@@ -11,7 +12,7 @@ class FileThumbnail extends StatelessWidget {
     required this.file,
     this.size = 48,
     this.expand = false,
-    this.borderRadius = 8,
+    this.borderRadius = UdmRadius.thumbnail,
   });
 
   final LibraryFile file;
@@ -68,21 +69,55 @@ class FileThumbnail extends StatelessWidget {
   }
 
   Widget _icon(BuildContext context) {
+    final tokens = ZfileTokens.of(context);
+    final swatch = tokens.swatch(_categoryKey);
+    final useGradient = expand || size >= 96;
+    if (useGradient) {
+      final colors = tokens.gradientFor(file.path);
+      return Container(
+        width: expand ? null : size,
+        height: expand ? null : size,
+        alignment: Alignment.topLeft,
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(borderRadius),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: colors,
+          ),
+        ),
+        child: Icon(
+          _iconForFile(),
+          size: expand ? 28 : size * 0.34,
+          color: tokens.onGradientHeading,
+        ),
+      );
+    }
     return Container(
-      width: expand ? null : size,
-      height: expand ? null : size,
+      width: size,
+      height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        color: swatch.background,
         borderRadius: BorderRadius.circular(borderRadius),
       ),
       child: Icon(
         _iconForFile(),
-        size: expand ? 48 : size * 0.5,
-        color: Theme.of(context).colorScheme.primary,
+        size: size * 0.46,
+        color: swatch.icon,
       ),
     );
   }
+
+  String get _categoryKey => switch (file.category) {
+    StorageCategory.videos => 'videos',
+    StorageCategory.images => 'images',
+    StorageCategory.audio => 'audio',
+    StorageCategory.documents => 'documents',
+    StorageCategory.apk => 'apps',
+    _ => 'other',
+  };
 
   IconData _iconForFile() {
     if (file.isGalleryImage) return Icons.image_outlined;
