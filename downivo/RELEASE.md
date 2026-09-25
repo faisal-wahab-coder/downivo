@@ -1,6 +1,6 @@
 # Production Release Guide
 
-Downivo **1.4.0** — Save as Video/Audio, extract audio from Files.
+Downivo **1.5.0** — Files folders, Open with, Threads media recovery.
 
 ## Prerequisites
 
@@ -25,7 +25,7 @@ Complete the manual checklist in [`QA_CHECKLIST.md`](QA_CHECKLIST.md) on a physi
 
 - **Version name** — `pubspec.yaml` → `version: MAJOR.MINOR.PATCH+BUILD`
 - **Version code** — the number after `+` (must increment for each Play Store upload)
-- Current production: `1.4.0+6`
+- Current production: `1.5.0+7`
 
 ## Signing (Google Play)
 
@@ -82,8 +82,8 @@ Outputs:
 Create a GitHub release after the repository is public:
 
 ```bash
-git tag v1.4.0
-git push origin v1.4.0
+git tag v1.5.0
+git push origin v1.5.0
 ```
 
 See [`docs/DEVELOPMENT.md`](../docs/DEVELOPMENT.md) and [`docs/PUBLIC_RELEASE_CHECKLIST.md`](../docs/PUBLIC_RELEASE_CHECKLIST.md).

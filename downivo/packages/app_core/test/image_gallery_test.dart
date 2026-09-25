@@ -115,6 +115,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Share'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Delete'),
+      80,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text('Delete'), findsOneWidget);
   });
 }

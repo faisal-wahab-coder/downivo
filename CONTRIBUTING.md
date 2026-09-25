@@ -132,7 +132,7 @@ Include:
 - Reproduction steps
 - Expected vs actual behavior
 - Platform (Android version or Web)
-- App version (`1.4.0+6` or later)
+- App version (`1.5.0+7` or later)
 - A test that fails without the fix when the bug is in Dart logic
 
 ## Code of Conduct

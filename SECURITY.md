@@ -4,7 +4,8 @@
 
 | Version | Supported |
 | ------- | --------- |
-| 1.4.x   | Yes — current production (`1.4.0+6`) |
+| 1.5.x   | Yes — current production (`1.5.0+7`) |
+| 1.4.x   | No |
 | 1.3.x   | No |
 | 1.2.x   | No |
 | 1.1.x   | No |

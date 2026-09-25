@@ -96,7 +96,7 @@ class DownloadStatusBadge extends StatelessWidget {
           false
         ),
       DownloadStatus.preparing => (
-          'Finding video',
+          'Finding file',
           tokens.secondary,
           Icons.hourglass_top_rounded,
           true

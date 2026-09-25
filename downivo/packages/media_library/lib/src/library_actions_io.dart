@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:gal/gal.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
@@ -6,6 +7,8 @@ import 'package:storage/storage.dart';
 import 'library_gallery_save_result.dart';
 import 'library_open_result.dart';
 import 'models/library_file.dart';
+
+const _openWithChannel = MethodChannel('com.downivo.files/open');
 
 Future<LibraryOpenResult> openLibraryFileOnPlatform(
   LibraryFile file,
@@ -16,6 +19,32 @@ Future<LibraryOpenResult> openLibraryFileOnPlatform(
     success: result.type == ResultType.done,
     message: result.message,
   );
+}
+
+Future<LibraryOpenResult> openLibraryFileWithChooserOnPlatform(
+  LibraryFile file,
+  FileStore store,
+) async {
+  try {
+    final raw = await _openWithChannel.invokeMapMethod<Object?, Object?>(
+      'openWith',
+      {'path': file.path, 'mime': file.mimeType},
+    );
+    return LibraryOpenResult(
+      success: raw?['success'] == true,
+      message: raw?['message'] as String? ?? '',
+    );
+  } on MissingPluginException {
+    return const LibraryOpenResult(
+      success: false,
+      message: 'Open with is available on Android.',
+    );
+  } on PlatformException catch (error) {
+    return LibraryOpenResult(
+      success: false,
+      message: error.message ?? 'Could not open this file.',
+    );
+  }
 }
 
 Future<void> shareLibraryFileOnPlatform(LibraryFile file, FileStore store) {

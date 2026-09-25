@@ -10,6 +10,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 
 - Open-source GitHub preparation (license, contributing guides, issue/PR templates).
 
+## [1.5.0] - 2026-09-26
+
+### Added
+
+- Folders in Files: create folders, browse subfolders, and move files into them
+- Open a file with another app (Android FileProvider)
+- Show in Files from a completed download
+
+### Fixed
+
+- Threads posts now resolve the actual photo or video instead of an empty stub
+
 ## [1.4.0] - 2026-09-22
 
 ### Added
